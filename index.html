@@ -3,41 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAITYA - Image Text Editor (Auto-Color Detect)</title>
+    <title>DAITYA - Image Text Editor (Auto-Color & Exact Size)</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
     <style>
-        :root { --primary: #3b82f6; --primary-hover: #2563eb; --bg: #f3f4f6; --surface: #ffffff; --border: #e5e7eb; --text: #1f2937; --text-muted: #6b7280; --success: #10b981; }
+        :root { --primary: #8b5cf6; --primary-hover: #7c3aed; --bg: #0f172a; --surface: #1e293b; --border: #334155; --text: #f8fafc; --text-muted: #94a3b8; }
         body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: var(--surface); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03); padding: 30px; border: 1px solid var(--border); }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--surface); border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); padding: 30px; border: 1px solid var(--border); }
         .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: var(--primary); margin: 0 0 10px 0; font-weight: 800; }
-        .header p { color: var(--text-muted); margin: 0; font-size: 15px; }
+        .header h1 { color: var(--primary); margin: 0 0 10px 0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .header p { color: var(--text-muted); margin: 0; font-size: 14px; }
         
-        .upload-section { border: 2px dashed var(--border); padding: 30px; text-align: center; border-radius: 12px; background: #f9fafb; margin-bottom: 25px; cursor: pointer; transition: 0.3s; }
-        .upload-section:hover { border-color: var(--primary); background: #eff6ff; }
-        input[type="file"] { font-size: 15px; }
+        .upload-section { border: 2px dashed var(--border); padding: 30px; text-align: center; border-radius: 12px; background: #0f172a; margin-bottom: 25px; cursor: pointer; transition: 0.3s; }
+        .upload-section:hover { border-color: var(--primary); }
+        input[type="file"] { font-size: 15px; color: var(--text); }
 
         .editor-panels { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .control-panel { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; }
-        .control-panel h3 { margin-top: 0; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 10px;}
+        .control-panel { background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .control-panel h3 { margin-top: 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px;}
         
         .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .input-group label { font-size: 13px; font-weight: 600; color: var(--text); }
-        input[type="text"] { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s; font-family: inherit;}
-        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        .input-group label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+        input[type="text"] { padding: 12px; background: #1e293b; color: white; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s; font-family: inherit;}
+        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 
-        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;}
-        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;}
+        .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
+        .btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; transform: none; }
 
-        #status { text-align: center; padding: 15px; border-radius: 8px; background: #fff3cd; color: #856404; font-weight: 600; margin-bottom: 20px; display: none; font-size: 14px;}
+        #status { text-align: center; padding: 15px; border-radius: 8px; background: #020617; color: #10b981; font-weight: bold; margin-bottom: 20px; display: none; font-size: 13px; border: 1px solid #10b981;}
         
-        .result-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #e5e7eb; min-height: 400px; display: flex; align-items: center; justify-content: center; position: relative;}
-        canvas { max-width: 100%; height: auto; display: block; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
+        .result-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #000; min-height: 400px; display: flex; align-items: center; justify-content: center; position: relative;}
+        canvas { max-width: 100%; height: auto; display: block; }
 
-        .color-preview-box { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; border-top: 2px solid var(--border); }
-        .color-sample { width: 40px; height: 40px; border-radius: 8px; border: 2px solid var(--border); box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
-        .color-label { font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 4px; }
+        .color-preview-box { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+        .color-sample { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); }
+        .color-label { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px; font-weight: bold;}
 
         @media (max-width: 768px) { .editor-panels { grid-template-columns: 1fr; } }
     </style>
@@ -46,11 +46,11 @@
 
     <div class="container">
         <div class="header">
-            <h1>DAITYA Image Text Editor</h1>
-            <p>Advanced OCR + Canvas Text Replacement with Automatic Color Detection Bypass</p>
+            <h1>DAITYA Execution Terminal</h1>
+            <p>Module: Deep OCR | Exact Color Match | Dynamic Pixel Size Matching</p>
         </div>
 
-        <div id="status">Initializing... Please upload an image.</div>
+        <div id="status">> System initialized. Waiting for payload (Image).</div>
 
         <div class="upload-section">
             <input type="file" id="uploadImage" accept="image/*" />
@@ -58,27 +58,27 @@
 
         <div class="editor-panels">
             <div class="control-panel">
-                <h3>Text Replacement Rules</h3>
+                <h3>Replacement Parameters</h3>
                 <div class="input-group">
-                    <label>Existing Text (Exact Word Match)</label>
-                    <input type="text" id="oldText" placeholder="e.g. STOP">
+                    <label>Target Text (Exact Match)</label>
+                    <input type="text" id="oldText" placeholder="e.g. TARGET">
                 </div>
                 <div class="input-group">
-                    <label>Replacement Text</label>
-                    <input type="text" id="newText" placeholder="e.g. GO NOW">
+                    <label>Injection Text</label>
+                    <input type="text" id="newText" placeholder="e.g. BYPASS">
                 </div>
                 <button class="btn" id="btnReplace" onclick="processTextReplacement()" disabled>
-                    ⟳ Execute Replace (Auto-Color)
+                    [ EXECUTE OVERRIDE ]
                 </button>
 
                 <div class="color-preview-box">
                     <div>
-                        <div id="sampleBackground" class="color-sample" style="background: #eee;"></div>
-                        <div class="color-label">Background</div>
+                        <div id="sampleBackground" class="color-sample" style="background: #000;"></div>
+                        <div class="color-label">BG MASK</div>
                     </div>
                     <div>
-                        <div id="sampleText" class="color-sample" style="background: #333;"></div>
-                        <div class="color-label">Text Color</div>
+                        <div id="sampleText" class="color-sample" style="background: #fff;"></div>
+                        <div class="color-label">TEXT HEX</div>
                     </div>
                 </div>
             </div>
@@ -91,19 +91,16 @@
 
     <script>
         let currentImage = null;
-        let originalCanvas = null; // Backup to restore before new execution
+        let originalCanvas = null; 
         const statusEl = document.getElementById('status');
         const canvas = document.getElementById('outputCanvas');
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
-        function showStatus(msg, isError = false) {
+        function logStatus(msg) {
             statusEl.style.display = 'block';
-            statusEl.innerText = msg;
-            statusEl.style.background = isError ? '#f8d7da' : '#d4edda';
-            statusEl.style.color = isError ? '#721c24' : '#155724';
+            statusEl.innerText = '> ' + msg;
         }
 
-        // Handle Image Upload
         document.getElementById('uploadImage').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -115,13 +112,12 @@
                         canvas.height = currentImage.height;
                         ctx.drawImage(currentImage, 0, 0);
                         
-                        // Create a backup canvas
                         originalCanvas = document.createElement('canvas');
                         originalCanvas.width = currentImage.width;
                         originalCanvas.height = currentImage.height;
                         originalCanvas.getContext('2d').drawImage(currentImage, 0, 0);
 
-                        showStatus('Image loaded. Enter text and its replacement to begin.');
+                        logStatus('Image parsed into memory. Enter parameters.');
                         document.getElementById('btnReplace').disabled = false;
                     };
                     currentImage.src = event.target.result;
@@ -130,111 +126,104 @@
             }
         });
 
-        // Main Process: OCR + Color Analysis + Masking + Redraw
         async function processTextReplacement() {
             if (!currentImage || !originalCanvas) return;
             const oldTextTarget = document.getElementById('oldText').value.trim();
             const newTextData = document.getElementById('newText').value;
 
-            if (!oldTextTarget || oldTextTarget === "") {
-                showStatus('Error: Specify the existing word to replace.', true);
+            if (!oldTextTarget) {
+                logStatus('ERROR: Missing target text.');
                 return;
             }
 
             try {
-                // Restore original state before execution
                 ctx.drawImage(originalCanvas, 0, 0);
-                
-                showStatus('Analyzing image structure with Tesseract.js...');
+                logStatus('Deploying OCR Engine...');
                 document.getElementById('btnReplace').disabled = true;
 
-                // Step 1: Perform OCR to get bbox
                 const { data: { words } } = await Tesseract.recognize(
-                    originalCanvas, // Analyze the original to get pure coordinates
-                    'eng', // Default to English; can expand for multi-lang
-                    { logger: m => console.log(m.status + ': ' + m.progress.toFixed(2)) }
+                    originalCanvas, 'eng', { logger: m => console.log(m.status) }
                 );
 
-                // Step 2: Find the matching text bounding box
                 const targetWord = words.find(w => w.text.toLowerCase() === oldTextTarget.toLowerCase());
 
                 if (!targetWord) {
-                    showStatus(`Error: Text "${oldTextTarget}" not found in image. Check spelling or upload a clearer photo.`, true);
+                    logStatus(`ERROR: Target [${oldTextTarget}] not located in pixel matrix.`);
                     document.getElementById('btnReplace').disabled = false;
                     return;
                 }
 
-                showStatus(`Text located! Analyzing colors for replacement bypass...`);
+                logStatus(`Target locked. Executing color & dimensional analysis...`);
                 const bbox = targetWord.bbox;
                 const { x0, y0, x1, y1 } = bbox;
                 const width = x1 - x0;
-                const height = y1 - y0;
+                const targetHeight = y1 - y0; // The exact pixel height of the old text
 
-                // Step 3: Color Analysis Bypass
-                const analysisResult = analyzeBBoxColors(bbox, originalCanvas);
-                const avgBackgroundColor = analysisResult.backgroundColor;
-                const avgTextColor = analysisResult.textColor;
+                // 1. Color Extraction
+                const { backgroundColor, textColor } = analyzeBBoxColors(bbox, originalCanvas);
+                document.getElementById('sampleBackground').style.background = backgroundColor;
+                document.getElementById('sampleText').style.background = textColor;
 
-                // Update UI Color Previews
-                document.getElementById('sampleBackground').style.background = avgBackgroundColor;
-                document.getElementById('sampleText').style.background = avgTextColor;
+                // 2. Erase Old Text (In-Paint Mask)
+                ctx.fillStyle = backgroundColor;
+                const maskPadding = targetHeight * 0.1; // 10% padding
+                ctx.fillRect(x0 - maskPadding, y0 - maskPadding, width + (maskPadding*2), targetHeight + (maskPadding*2));
 
-                showStatus(`SUCCESS: Replacing text on canvas with detected colors.`);
+                // 3. Dynamic Font Scaling (Exact Size Matching)
+                // Hum guess work nahi karenge. Hum height calculate karke exact match karenge.
+                let fontSize = targetHeight; 
+                ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
+                
+                // Measure mathematical height of the new text
+                let metrics = ctx.measureText(newTextData);
+                let actualRenderedHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+                
+                // Agar actual rendered height target height se alag hai, toh scale adjust karo
+                if (actualRenderedHeight > 0) {
+                    let scaleFactor = targetHeight / actualRenderedHeight;
+                    fontSize = fontSize * scaleFactor * 0.85; // 0.85 multiplier to prevent descender clipping
+                }
 
-                // Step 4: Canvas Manipulation - Mask Old Text (In-Paint)
-                // We use surrounding background average color
-                ctx.fillStyle = avgBackgroundColor;
-                // Add minor padding to the mask to ensure complete coverage
-                const maskPadding = Math.max(2, height * 0.05);
-                ctx.fillRect(x0 - maskPadding, y0 - maskPadding, width + (maskPadding*2), height + (maskPadding*2));
-
-                // Step 5: Redraw New Text in Detected Color
-                ctx.font = `bold ${height}px 'Inter', 'Segoe UI', system-ui, sans-serif`;
-                ctx.fillStyle = avgTextColor;
+                // Apply Perfect Matched Font
+                ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
+                ctx.fillStyle = textColor;
                 ctx.textBaseline = 'top';
-                ctx.fillText(newTextData, x0, y0);
+                
+                // Inject Text
+                ctx.fillText(newTextData, x0, y0 + (targetHeight * 0.05)); // Slight Y adjustment for baseline
 
-                showStatus(`DONE: Text replaced with "${newTextData}". Old structure masked.`);
+                logStatus(`OVERRIDE COMPLETE. Injected [${newTextData}] at exact size & color.`);
                 document.getElementById('btnReplace').disabled = false;
 
             } catch (err) {
-                showStatus('Error during text replacement bypass: ' + err.message, true);
+                logStatus('CRITICAL ERROR: ' + err.message);
                 document.getElementById('btnReplace').disabled = false;
             }
         }
 
-        // --- Core Color Detection Logic ---
+        // --- Color Algorithms ---
         function analyzeBBoxColors(bbox, sourceCanvas) {
             const { x0, y0, x1, y1 } = bbox;
             const w = x1 - x0;
             const h = y1 - y0;
             const tempCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
-
-            // Analyze surrounding area for background color (more resilient than inner pixels)
-            const surroundPadding = Math.round(h * 0.5); // Sample width based on text height
             
-            const backgroundSampleAreas = [
-                { x: Math.max(0, x0 - surroundPadding), y: y0, w: surroundPadding, h: h }, // Left
-                { x: x1, y: y0, w: surroundPadding, h: h }, // Right
-                { x: x0, y: Math.max(0, y0 - surroundPadding), w: w, h: surroundPadding }, // Top
-                { x: x0, y: y1, w: w, h: surroundPadding } // Bottom
+            const p = Math.max(2, Math.round(h * 0.4)); 
+            const bgAreas = [
+                { x: Math.max(0, x0 - p), y: y0, w: p, h: h },
+                { x: x1, y: y0, w: p, h: h },
+                { x: x0, y: Math.max(0, y0 - p), w: w, h: p },
+                { x: x0, y: y1, w: w, h: p }
             ];
 
-            const bgAvg = calculateAverageColor(backgroundSampleAreas, tempCtx);
-            const bgColorRGB = rgbStringToArr(bgAvg);
+            const bgAvg = calculateAverageColor(bgAreas, tempCtx);
+            const bgRGB = bgAvg.match(/\d+/g).map(Number);
+            const textData = tempCtx.getImageData(x0, y0, w, h).data;
+            const textRGB = getHighestContrastColor(textData, bgRGB);
 
-            // Analyze inner area for text color
-            // Standard approach: most distant/contrast color from background within bbox
-            const textInnerData = tempCtx.getImageData(x0, y0, w, h).data;
-            const dominantColors = getContrastColors(textInnerData, bgColorRGB);
-
-            return {
-                backgroundColor: bgAvg,
-                textColor: dominantColors.textColorStr
-            };
+            return { backgroundColor: bgAvg, textColor: textRGB };
         }
 
-        // Helper: Calculate average color of multiple rectangles
         function calculateAverageColor(rects, context) {
             let r=0, g=0, b=0, count=0;
             rects.forEach(rect => {
@@ -249,39 +238,19 @@
             return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
         }
 
-        // Helper: Convert "rgb(x,y,z)" to [x,y,z]
-        function rgbStringToArr(str) {
-            return str.match(/\d+/g).map(Number);
-        }
-
-        // Helper: Client-side logic for high contrast/significant colors
-        function getContrastColors(pixels, bgColor) {
-            // Very basic heuristic: Find pixels that contrast most with bgColor
-            // and assume they are part of the text structure.
-            let maxContrastWord = [0,0,0];
-            let maxContrastValue = -1;
-
-            // Optimization: sample every 4th pixel inside bbox
-            for (let i = 0; i < pixels.length; i += 16) { 
-                const pr = pixels[i]; const pg = pixels[i+1]; const pb = pixels[i+2];
-                
-                // Color difference (Euclidean distance simplified)
-                const distance = Math.sqrt(Math.pow(pr - bgColor[0], 2) + 
-                                           Math.pow(pg - bgColor[1], 2) + 
-                                           Math.pow(pb - bgColor[2], 2));
-
-                if (distance > maxContrastValue) {
-                    maxContrastValue = distance;
-                    maxContrastWord = [pr, pg, pb];
+        function getHighestContrastColor(pixels, bgColor) {
+            let maxContrast = [0,0,0];
+            let maxDistance = -1;
+            for (let i = 0; i < pixels.length; i += 8) { 
+                const pr = pixels[i], pg = pixels[i+1], pb = pixels[i+2];
+                const distance = Math.sqrt(Math.pow(pr - bgColor[0], 2) + Math.pow(pg - bgColor[1], 2) + Math.pow(pb - bgColor[2], 2));
+                if (distance > maxDistance) {
+                    maxDistance = distance;
+                    maxContrast = [pr, pg, pb];
                 }
             }
-            
-            // If the max contrast found is negligible, assume text is same as background (unlikely OCR success)
-            if (maxContrastValue < 30) { 
-                 return { textColorStr: `rgb(31,41,55)` }; // Default text
-            }
-
-            return { textColorStr: `rgb(${maxContrastWord[0]}, ${maxContrastWord[1]}, ${maxContrastWord[2]})` };
+            if (maxDistance < 20) return `rgb(0,0,0)`; // Failsafe
+            return `rgb(${maxContrast[0]}, ${maxContrast[1]}, ${maxContrast[2]})`;
         }
     </script>
 </body>
