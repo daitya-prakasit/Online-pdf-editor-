@@ -1,155 +1,812 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAITYA - Multi-Language PDF Editor</title>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+    <title>ASUR PDF OCR EDITOR - 100% WORKING</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        :root { --bg: #070707; --panel: #141414; --accent: #00ff88; --text: #d4d4d4; }
-        body { font-family: 'Courier New', Courier, monospace; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 950px; margin: auto; background: var(--panel); padding: 25px; border: 1px solid #222; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 255, 136, 0.1); }
-        h1 { color: var(--accent); text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0;}
-        .tool-section { background: #0a0a0a; padding: 15px; margin-top: 15px; border-left: 3px solid var(--accent); border-radius: 4px; }
-        .input-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
-        input[type="number"], input[type="text"], input[type="file"] { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 10px; border-radius: 4px; font-family: inherit; }
-        button { background: var(--accent); color: #000; font-weight: bold; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; transition: 0.2s; font-family: inherit; }
-        button:hover { background: #00cc6a; color: white; }
-        button:disabled { background: #222; color: #555; cursor: not-allowed; }
-        #status { color: #ffcc00; font-weight: bold; margin-top: 10px; font-size: 14px;}
-        iframe { width: 100%; height: 600px; margin-top: 20px; background: #fff; border: none; border-radius: 4px; }
-        .help-text { font-size: 12px; color: #777; margin-bottom: 10px; display: block; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0e14;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: #111820;
+            padding: 12px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #ff4444;
+        }
+
+        .logo { font-size: 24px; font-weight: 900; }
+        .logo span { color: #ff4444; }
+        .badge { background: #ff4444; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+
+        .main-container { display: flex; height: calc(100vh - 60px); }
+
+        .editor-panel {
+            width: 350px;
+            background: #111820;
+            padding: 20px;
+            border-right: 1px solid #2a3545;
+            overflow-y: auto;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #2a3545;
+        }
+
+        .section-title {
+            color: #ff4444;
+            font-size: 14px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 14px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .upload-btn:hover { background: #ff6666; }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: #ff4444;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-secondary {
+            background: #1e2a3a;
+            color: white;
+            border: 1px solid #2a3545;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .btn-secondary:hover { background: #2a3545; }
+
+        .text-list {
+            max-height: 250px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .text-item {
+            background: #1a2535;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #2a3545;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .text-item:hover { border-color: #ff4444; background: #1e2a3a; }
+        .text-item.active { border-color: #ff4444; background: #2a1a2a; }
+
+        .text-preview {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 220px;
+        }
+
+        .edit-area textarea {
+            width: 100%;
+            height: 100px;
+            padding: 12px;
+            background: #0d121a;
+            border: 1px solid #2a3545;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        .edit-area textarea:focus { outline: none; border-color: #ff4444; }
+
+        .color-input {
+            width: 100%;
+            height: 40px;
+            border: 1px solid #2a3545;
+            border-radius: 6px;
+            background: #0d121a;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            background: #0d121a;
+            border: 1px solid #2a3545;
+            border-radius: 6px;
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .slider-container { margin-bottom: 12px; }
+        .slider-container label { font-size: 12px; color: #8899aa; display: block; margin-bottom: 5px; }
+        .slider-container input { width: 100%; accent-color: #ff4444; }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0a0e14;
+        }
+
+        .toolbar {
+            padding: 10px 20px;
+            background: #111820;
+            border-bottom: 1px solid #2a3545;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .tool-btn {
+            padding: 8px 16px;
+            background: #1e2a3a;
+            color: white;
+            border: 1px solid #2a3545;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .tool-btn:hover { background: #2a3545; }
+        .tool-btn.active { background: #ff4444; border-color: #ff4444; }
+
+        .page-controls {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .page-info { color: #ff4444; font-weight: bold; margin: 0 10px; }
+
+        .canvas-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background: #151e28;
+        }
+
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+            background: white;
+        }
+
+        #pdf-canvas { display: block; }
+        #text-canvas { position: absolute; top: 0; left: 0; }
+
+        .action-bar {
+            padding: 15px 20px;
+            background: #111820;
+            border-top: 1px solid #2a3545;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #111820;
+            padding: 30px 50px;
+            border-radius: 10px;
+            border: 2px solid #ff4444;
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #2a3545;
+            border-top: 5px solid #ff4444;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #file-input { display: none; }
+        .info-message { color: #8899aa; text-align: center; padding: 20px; font-size: 13px; }
+        .status { color: #ff4444; font-size: 12px; margin: 5px 0; }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #2a3545;
+            border-radius: 2px;
+            margin: 10px 0;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #ff4444;
+            width: 0%;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>[ DAITYA ] - HINDI & ENGLISH PDF EDITOR</h1>
-        
-        <input type="file" id="uploadPdf" accept="application/pdf" />
-        <p id="status">> SYSTEM: Waiting for target PDF...</p>
 
-        <div class="tool-section">
-            <h3>Mask Old Text & Inject New (Hindi/Eng)</h3>
-            <span class="help-text">Set X,Y coordinates to cover the old text with a white mask, then type your Hindi or English text.</span>
-            
-            <div class="input-group">
-                <input type="number" id="posX" placeholder="X Coord (e.g. 100)" value="100">
-                <input type="number" id="posY" placeholder="Y Coord (e.g. 500)" value="500">
-                <input type="number" id="boxW" placeholder="Mask Width (e.g. 150)" value="150">
-                <input type="number" id="boxH" placeholder="Mask Height (e.g. 20)" value="20">
+<div class="header">
+    <div class="logo"><span>ASUR</span> PDF OCR EDITOR</div>
+    <div class="badge">OCR • 100% WORKING</div>
+</div>
+
+<div class="main-container">
+    <div class="editor-panel">
+        <div class="section">
+            <div class="section-title">📁 PDF फाइल</div>
+            <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+                📄 PDF अपलोड करें
+            </button>
+            <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(event)">
+        </div>
+
+        <div class="section">
+            <div class="section-title">🔍 OCR टेक्स्ट निकालें</div>
+            <button class="btn btn-secondary" onclick="runOCR()">
+                🔍 OCR से टेक्स्ट निकालें
+            </button>
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
             </div>
-            <div class="input-group">
-                <input type="text" id="newText" placeholder="नया टेक्स्ट यहाँ लिखें / Enter New Text" style="flex: 1;" value="DAITYA द्वारा हैक किया गया">
-                <input type="number" id="fontSize" placeholder="Font Size" value="14" style="width: 80px;">
-                <button id="btnReplace" onclick="maskAndReplace()" disabled>INJECT TEXT</button>
+            <div class="status" id="ocr-status"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📝 मिले हुए टेक्स्ट</div>
+            <div class="text-list" id="text-list">
+                <div class="info-message">PDF अपलोड करें और OCR चलाएं</div>
             </div>
         </div>
 
-        <button id="btnDownload" onclick="downloadPdf()" disabled style="width: 100%; margin-top: 15px; background: #0088ff; color: white;">DOWNLOAD MODIFIED PDF</button>
+        <div class="section">
+            <div class="section-title">✏️ टेक्स्ट एडिट करें</div>
+            <div class="edit-area">
+                <textarea id="edit-textarea" placeholder="कोई टेक्स्ट सेलेक्ट नहीं..."></textarea>
+                
+                <label style="color: #8899aa; font-size: 12px;">फॉन्ट साइज:</label>
+                <div class="slider-container">
+                    <input type="range" id="font-size-slider" min="6" max="72" value="16">
+                    <span id="font-size-value" style="color: #ff4444;">16</span>px
+                </div>
 
-        <iframe id="pdfViewer"></iframe>
+                <label style="color: #8899aa; font-size: 12px;">कलर:</label>
+                <input type="color" id="text-color" class="color-input" value="#000000">
+
+                <label style="color: #8899aa; font-size: 12px;">फॉन्ट:</label>
+                <select id="font-select">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Verdana">Verdana</option>
+                </select>
+
+                <button class="btn btn-primary" onclick="updateSelectedText()" style="margin-bottom: 8px;">अपडेट करें</button>
+                <button class="btn btn-secondary" onclick="addNewText()">➕ नया टेक्स्ट जोड़ें</button>
+                <button class="btn btn-secondary" onclick="deleteSelectedText()">🗑️ डिलीट करें</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🎨 स्टाइल</div>
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                <button class="btn btn-secondary" onclick="applyBold()" style="width: auto; padding: 8px 15px;"><b>B</b></button>
+                <button class="btn btn-secondary" onclick="applyItalic()" style="width: auto; padding: 8px 15px;"><i>I</i></button>
+                <button class="btn btn-secondary" onclick="applyUnderline()" style="width: auto; padding: 8px 15px;"><u>U</u></button>
+            </div>
+            <button class="btn btn-secondary" onclick="clearAllText()">🧹 सारा टेक्स्ट हटाएं</button>
+        </div>
     </div>
 
-    <script>
-        let currentPdfBytes = null;
-        let hindiFontBytes = null;
-        const { PDFDocument, rgb } = PDFLib;
+    <div class="canvas-area">
+        <div class="toolbar">
+            <button class="tool-btn active" id="tool-select" onclick="setTool('select')">🖱️ सेलेक्ट</button>
+            <button class="tool-btn" id="tool-move" onclick="setTool('move')">✋ मूव</button>
+            
+            <div class="page-controls">
+                <button class="tool-btn" onclick="previousPage()">◀ पिछला</button>
+                <span class="page-info">पेज <span id="current-page">1</span>/<span id="total-pages">1</span></span>
+                <button class="tool-btn" onclick="nextPage()">अगला ▶</button>
+                <button class="tool-btn" onclick="zoomIn()">🔍+</button>
+                <button class="tool-btn" onclick="zoomOut()">🔍-</button>
+            </div>
+        </div>
 
-        // Fetching a Hindi Supported Font (Hind) from Google Fonts repo directly
-        async function loadHindiFont() {
-            try {
-                document.getElementById('status').innerText = '> SYSTEM: Downloading Hindi Language Module...';
-                const url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/hind/Hind-Regular.ttf';
-                const response = await fetch(url);
-                hindiFontBytes = await response.arrayBuffer();
-                document.getElementById('status').innerText = '> SYSTEM: Hindi Font loaded. Ready for PDF.';
-            } catch (err) {
-                document.getElementById('status').innerText = '> ERROR: Failed to load Hindi font. ' + err.message;
-            }
-        }
+        <div class="canvas-wrapper">
+            <div class="canvas-container" id="canvas-container">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="text-canvas"></canvas>
+            </div>
+        </div>
 
-        // Initialize Font load on page start
-        window.onload = loadHindiFont;
+        <div class="action-bar">
+            <button class="btn btn-secondary" onclick="exportPDF()" style="width: auto;">💾 प्रीव्यू</button>
+            <button class="btn btn-primary" onclick="downloadPDF()" style="width: auto;">⬇️ डाउनलोड</button>
+        </div>
+    </div>
+</div>
 
-        // Load Uploaded PDF
-        document.getElementById('uploadPdf').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('status').innerText = '> SYSTEM: Injecting PDF into memory...';
-                currentPdfBytes = await file.arrayBuffer();
-                document.getElementById('btnReplace').disabled = false;
-                document.getElementById('btnDownload').disabled = false;
-                document.getElementById('status').innerText = '> SYSTEM: PDF Loaded. Set coordinates and Inject.';
-                displayPdf(currentPdfBytes);
-            }
+<div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div id="loading-text">लोड हो रहा है...</div>
+</div>
+
+<script>
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let scale = 1.5;
+    let fabricCanvas = null;
+    let textItems = [];
+    let currentTool = 'select';
+    let selectedTextId = null;
+    let currentPDFData = null;
+
+    function initFabricCanvas(width, height) {
+        if (fabricCanvas) fabricCanvas.dispose();
+        
+        fabricCanvas = new fabric.Canvas('text-canvas', {
+            selection: true,
+            preserveObjectStacking: true,
+            width: width,
+            height: height
         });
 
-        // The Bypass: Mask old text + Write Hindi/English text
-        async function maskAndReplace() {
-            if (!currentPdfBytes || !hindiFontBytes) {
-                alert("Wait for font and PDF to load!");
-                return;
-            }
+        fabricCanvas.on('selection:created', onTextSelected);
+        fabricCanvas.on('selection:updated', onTextSelected);
+        fabricCanvas.on('selection:cleared', onSelectionCleared);
+        fabricCanvas.on('object:modified', onObjectModified);
+    }
 
+    async function loadPDF(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        showLoading('PDF लोड हो रहा है...');
+        
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            currentPDFData = new Uint8Array(e.target.result);
+            
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            
             try {
-                document.getElementById('status').innerText = '> SYSTEM: Applying Mask and Custom Font...';
+                pdfDoc = await pdfjsLib.getDocument({ data: currentPDFData }).promise;
+                totalPages = pdfDoc.numPages;
+                document.getElementById('total-pages').textContent = totalPages;
+                currentPage = 1;
                 
-                const pdfDoc = await PDFDocument.load(currentPdfBytes);
+                await renderPage(currentPage);
+                hideLoading();
                 
-                // Register Fontkit for Custom TTF loading
-                pdfDoc.registerFontkit(window.fontkit);
-                
-                // Embed the downloaded Hindi font
-                const customFont = await pdfDoc.embedFont(hindiFontBytes);
-                
-                const pages = pdfDoc.getPages();
-                const targetPage = pages[0]; // Edits Page 1
-                
-                // Get inputs
-                const x = parseFloat(document.getElementById('posX').value);
-                const y = parseFloat(document.getElementById('posY').value);
-                const w = parseFloat(document.getElementById('boxW').value);
-                const h = parseFloat(document.getElementById('boxH').value);
-                const text = document.getElementById('newText').value;
-                const fSize = parseFloat(document.getElementById('fontSize').value);
+                document.getElementById('ocr-status').innerHTML = '✅ PDF लोड हो गई। अब OCR चलाएं।';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('PDF लोड नहीं हुई: ' + error.message);
+                hideLoading();
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    }
 
-                // Step 1: Draw White Mask to hide old text
-                targetPage.drawRectangle({
-                    x: x, y: y, width: w, height: h, color: rgb(1, 1, 1),
+    async function renderPage(pageNum) {
+        if (!pdfDoc) return false;
+
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: scale });
+        
+        const canvas = document.getElementById('pdf-canvas');
+        const context = canvas.getContext('2d');
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        
+        document.getElementById('canvas-container').style.width = viewport.width + 'px';
+        document.getElementById('canvas-container').style.height = viewport.height + 'px';
+        
+        initFabricCanvas(viewport.width, viewport.height);
+        document.getElementById('current-page').textContent = pageNum;
+        
+        loadPageTextItems();
+        return true;
+    }
+
+    // OCR मेन फंक्शन - यही असली काम करेगा
+    async function runOCR() {
+        if (!pdfDoc) {
+            alert('पहले PDF अपलोड करें।');
+            return;
+        }
+
+        showLoading('OCR चल रहा है...');
+        document.getElementById('progress-bar').style.display = 'block';
+        document.getElementById('ocr-status').innerHTML = '⏳ टेक्स्ट निकाला जा रहा है...';
+        
+        textItems = [];
+        
+        try {
+            for (let i = 1; i <= totalPages; i++) {
+                const progress = (i / totalPages) * 100;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('loading-text').textContent = `पेज ${i}/${totalPages} प्रोसेस हो रहा है...`;
+                
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 2.0 }); // OCR के लिए हाई रेजॉल्यूशन
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                // Tesseract OCR
+                const result = await Tesseract.recognize(canvas, 'eng+hin', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            document.getElementById('ocr-status').innerHTML = 
+                                `⏳ पेज ${i} OCR: ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
                 });
-
-                // Step 2: Draw New Text (Hindi/Eng) using embedded custom font
-                targetPage.drawText(text, {
-                    x: x + 2, 
-                    y: y + 4, 
-                    size: fSize,
-                    font: customFont,
-                    color: rgb(0, 0, 0), // Black text
+                
+                // OCR रिजल्ट से टेक्स्ट ब्लॉक निकालें
+                const words = result.data.words;
+                const scaleFactor = scale / 2.0; // OCR स्केल से नॉर्मल स्केल में कन्वर्ट
+                
+                words.forEach((word, index) => {
+                    if (word.text && word.text.trim().length > 0) {
+                        textItems.push({
+                            id: `ocr-${i}-${index}-${Date.now()}`,
+                            page: i,
+                            text: word.text.trim(),
+                            x: word.bbox.x0 * scaleFactor,
+                            y: word.bbox.y0 * scaleFactor,
+                            fontSize: (word.bbox.y1 - word.bbox.y0) * scaleFactor || 14,
+                            fontFamily: 'Arial',
+                            color: '#000000',
+                            fontWeight: 'normal',
+                            fontStyle: 'normal',
+                            underline: false
+                        });
+                    }
                 });
+                
+                document.getElementById('ocr-status').innerHTML = `✅ पेज ${i} से ${words.length} शब्द निकले`;
+            }
+            
+            document.getElementById('progress-bar').style.display = 'none';
+            document.getElementById('ocr-status').innerHTML = `✅ कुल ${textItems.length} टेक्स्ट आइटम निकले!`;
+            
+            updateTextList();
+            loadPageTextItems();
+            hideLoading();
+            
+        } catch (error) {
+            console.error('OCR Error:', error);
+            document.getElementById('ocr-status').innerHTML = '❌ OCR फेल: ' + error.message;
+            document.getElementById('progress-bar').style.display = 'none';
+            hideLoading();
+        }
+    }
 
-                currentPdfBytes = await pdfDoc.save();
-                document.getElementById('status').innerText = '> SUCCESS: Text Replashed (Hindi/Eng supported).';
-                displayPdf(currentPdfBytes);
-            } catch (err) {
-                document.getElementById('status').innerText = '> ERROR: ' + err.message;
+    function loadPageTextItems() {
+        if (!fabricCanvas) return;
+        fabricCanvas.clear();
+        
+        const pageItems = textItems.filter(item => item.page === currentPage);
+        
+        pageItems.forEach(item => {
+            const textObj = new fabric.Text(item.text, {
+                left: item.x,
+                top: item.y,
+                fontSize: item.fontSize,
+                fontFamily: item.fontFamily,
+                fill: item.color,
+                fontWeight: item.fontWeight,
+                fontStyle: item.fontStyle,
+                underline: item.underline,
+                id: item.id
+            });
+            
+            fabricCanvas.add(textObj);
+        });
+        
+        fabricCanvas.renderAll();
+    }
+
+    function updateTextList() {
+        const listContainer = document.getElementById('text-list');
+        const pageItems = textItems.filter(item => item.page === currentPage);
+        
+        if (pageItems.length === 0) {
+            listContainer.innerHTML = '<div class="info-message">⚠️ कोई टेक्स्ट नहीं मिला</div>';
+            return;
+        }
+        
+        listContainer.innerHTML = pageItems.slice(0, 50).map(item => `
+            <div class="text-item ${selectedTextId === item.id ? 'active' : ''}" onclick="selectTextById('${item.id}')">
+                <span class="text-preview">${item.text.substring(0, 30)}</span>
+                <span style="color: #ff4444; font-size: 11px;">✏️</span>
+            </div>
+        `).join('');
+        
+        if (pageItems.length > 50) {
+            listContainer.innerHTML += `<div class="info-message">... और ${pageItems.length - 50} आइटम</div>`;
+        }
+    }
+
+    function onTextSelected(e) {
+        const selected = e.selected[0];
+        if (selected && selected.id) {
+            selectedTextId = selected.id;
+            const item = textItems.find(t => t.id === selected.id);
+            if (item) {
+                document.getElementById('edit-textarea').value = item.text;
+                document.getElementById('font-size-slider').value = item.fontSize;
+                document.getElementById('font-size-value').textContent = Math.round(item.fontSize);
+                document.getElementById('text-color').value = item.color;
+            }
+            updateTextList();
+        }
+    }
+
+    function onSelectionCleared() {
+        selectedTextId = null;
+        document.getElementById('edit-textarea').value = '';
+        updateTextList();
+    }
+
+    function onObjectModified(e) {
+        const obj = e.target;
+        if (obj && obj.id) {
+            const item = textItems.find(t => t.id === obj.id);
+            if (item) {
+                item.x = obj.left;
+                item.y = obj.top;
+                item.text = obj.text;
+                item.fontSize = obj.fontSize;
+                item.color = obj.fill;
             }
         }
+    }
 
-        function downloadPdf() {
-            if (!currentPdfBytes) return;
-            const blob = new Blob([currentPdfBytes], { type: "application/pdf" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "Daitya_Hindi_Edited.pdf";
-            link.click();
-            document.getElementById('status').innerText = '> SYSTEM: PDF Output Extracted.';
+    function selectTextById(id) {
+        selectedTextId = id;
+        fabricCanvas.getObjects().forEach(obj => {
+            if (obj.id === id) {
+                fabricCanvas.setActiveObject(obj);
+                obj.setCoords();
+            }
+        });
+        
+        const item = textItems.find(t => t.id === id);
+        if (item) {
+            document.getElementById('edit-textarea').value = item.text;
+            document.getElementById('font-size-slider').value = item.fontSize;
+            document.getElementById('font-size-value').textContent = Math.round(item.fontSize);
+            document.getElementById('text-color').value = item.color;
         }
+        
+        updateTextList();
+        fabricCanvas.renderAll();
+    }
 
-        function displayPdf(pdfBytes) {
-            const blob = new Blob([currentPdfBytes], { type: "application/pdf" });
-            document.getElementById('pdfViewer').src = URL.createObjectURL(blob);
+    function updateSelectedText() {
+        if (!selectedTextId) { alert('पहले टेक्स्ट सेलेक्ट करें।'); return; }
+        
+        const newText = document.getElementById('edit-textarea').value;
+        const newFontSize = parseInt(document.getElementById('font-size-slider').value);
+        const newColor = document.getElementById('text-color').value;
+        const newFont = document.getElementById('font-select').value;
+        
+        const item = textItems.find(t => t.id === selectedTextId);
+        if (item) {
+            item.text = newText;
+            item.fontSize = newFontSize;
+            item.color = newColor;
+            item.fontFamily = newFont;
         }
-    </script>
+        
+        const activeObj = fabricCanvas.getActiveObject();
+        if (activeObj) {
+            activeObj.set({ text: newText, fontSize: newFontSize, fill: newColor, fontFamily: newFont });
+            fabricCanvas.renderAll();
+        }
+        
+        updateTextList();
+    }
+
+    function addNewText() {
+        const newId = `new-${Date.now()}`;
+        const newText = document.getElementById('edit-textarea').value || 'नया टेक्स्ट';
+        const fontSize = parseInt(document.getElementById('font-size-slider').value);
+        const color = document.getElementById('text-color').value;
+        const font = document.getElementById('font-select').value;
+        const center = fabricCanvas.getCenter();
+        
+        const item = {
+            id: newId, page: currentPage, text: newText,
+            x: center.left, y: center.top, fontSize: fontSize,
+            fontFamily: font, color: color,
+            fontWeight: 'normal', fontStyle: 'normal', underline: false
+        };
+        
+        textItems.push(item);
+        
+        const textObj = new fabric.Text(newText, {
+            left: center.left, top: center.top, fontSize: fontSize,
+            fontFamily: font, fill: color, id: newId
+        });
+        
+        fabricCanvas.add(textObj);
+        fabricCanvas.setActiveObject(textObj);
+        fabricCanvas.renderAll();
+        
+        selectedTextId = newId;
+        updateTextList();
+    }
+
+    function deleteSelectedText() {
+        if (!selectedTextId) { alert('पहले टेक्स्ट सेलेक्ट करें।'); return; }
+        
+        textItems = textItems.filter(t => t.id !== selectedTextId);
+        
+        fabricCanvas.getObjects().forEach(obj => {
+            if (obj.id === selectedTextId) fabricCanvas.remove(obj);
+        });
+        
+        fabricCanvas.renderAll();
+        selectedTextId = null;
+        document.getElementById('edit-textarea').value = '';
+        updateTextList();
+    }
+
+    function applyBold() {
+        const obj = fabricCanvas.getActiveObject();
+        if (obj) { obj.set('fontWeight', obj.fontWeight === 'bold' ? 'normal' : 'bold'); fabricCanvas.renderAll(); }
+    }
+
+    function applyItalic() {
+        const obj = fabricCanvas.getActiveObject();
+        if (obj) { obj.set('fontStyle', obj.fontStyle === 'italic' ? 'normal' : 'italic'); fabricCanvas.renderAll(); }
+    }
+
+    function applyUnderline() {
+        const obj = fabricCanvas.getActiveObject();
+        if (obj) { obj.set('underline', !obj.underline); fabricCanvas.renderAll(); }
+    }
+
+    function clearAllText() {
+        if (confirm('सारा टेक्स्ट डिलीट करें?')) {
+            textItems = textItems.filter(t => t.page !== currentPage);
+            fabricCanvas.clear();
+            selectedTextId = null;
+            updateTextList();
+        }
+    }
+
+    function setTool(tool) {
+        currentTool = tool;
+        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tool-${tool}`).classList.add('active');
+        fabricCanvas.selection = (tool === 'select');
+    }
+
+    async function previousPage() {
+        if (currentPage > 1) { currentPage--; await renderPage(currentPage); }
+    }
+
+    async function nextPage() {
+        if (currentPage < totalPages) { currentPage++; await renderPage(currentPage); }
+    }
+
+    function zoomIn() { scale += 0.25; renderPage(currentPage); }
+    function zoomOut() { if (scale > 0.5) { scale -= 0.25; renderPage(currentPage); } }
+
+    async function exportPDF() {
+        if (!pdfDoc) { alert('पहले PDF लोड करें।'); return; }
+        
+        showLoading('PDF बन रही है...');
+        
+        const canvas = document.getElementById('pdf-canvas');
+        const textCanvas = document.getElementById('text-canvas');
+        const combined = document.createElement('canvas');
+        combined.width = canvas.width;
+        combined.height = canvas.height;
+        const ctx = combined.getContext('2d');
+        
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, combined.width, combined.height);
+        ctx.drawImage(canvas, 0, 0);
+        ctx.drawImage(textCanvas, 0, 0);
+        
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+        
+        pdf.addImage(combined.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, canvas.width, canvas.height);
+        pdf.save('asur_ocr_edited.pdf');
+        hideLoading();
+    }
+
+    function downloadPDF() { exportPDF(); }
+
+    function showLoading(text = 'लोड हो रहा है...') {
+        document.getElementById('loading-text').textContent = text;
+        document.getElementById('loading').style.display = 'block';
+    }
+
+    function hideLoading() {
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    document.getElementById('font-size-slider').addEventListener('input', function() {
+        document.getElementById('font-size-value').textContent = this.value;
+    });
+
+    window.onload = function() {
+        console.log('ASUR OCR EDITOR READY');
+    };
+</script>
+
 </body>
 </html>
