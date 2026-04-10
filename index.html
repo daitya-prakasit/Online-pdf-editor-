@@ -2,85 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Style Image Text Editor</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Image Editor with Gemini</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-            margin: 0; padding: 20px;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { color: #333; margin: 0 0 10px 0; }
-        .header p { color: #666; margin: 0; font-size: 15px; }
-        
-        .toolbar {
-            background: white; padding: 15px 25px;
-            border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            display: flex; gap: 15px; flex-wrap: wrap; align-items: center;
-            margin-bottom: 20px;
-        }
-        .btn {
-            background-color: #007bff; color: white; border: none;
-            padding: 10px 15px; border-radius: 5px; cursor: pointer;
-            font-weight: bold; transition: 0.2s;
-        }
-        .btn:hover { background-color: #0056b3; }
-        .btn-success { background-color: #28a745; }
-        .btn-success:hover { background-color: #218838; }
-        
-        input[type="file"], input[type="color"], input[type="number"] {
-            padding: 5px; border: 1px solid #ccc; border-radius: 5px;
-        }
-        
-        #editor-container {
-            position: relative;
-            display: inline-block;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            background: white;
-            max-width: 100%;
-            overflow: auto;
-        }
-        canvas {
-            display: block;
-            cursor: crosshair;
-            max-width: 1000px;
-        }
-        .floating-input {
-            position: absolute;
-            background: transparent;
-            border: 1px dashed #007bff;
-            padding: 2px; margin: 0;
-            outline: none;
-            font-family: Arial, sans-serif;
-            resize: none;
-            overflow: hidden;
-            z-index: 10;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .toolbar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 800px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        input[type="file"], input[type="text"], input[type="color"], input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .api-input { flex-grow: 1; min-width: 200px; }
+        button { background-color: #007bff; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #0056b3; }
+        #editor-container { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 100%; overflow: auto; background: white; touch-action: none; /* touch-action none zaroori hai mobile scrolling rokne ke liye */ }
+        canvas { display: block; cursor: crosshair; max-width: 100%; height: auto; }
+        .floating-input { position: absolute; background: transparent; border: 2px dashed #007bff; padding: 2px; outline: none; resize: none; z-index: 10; overflow: hidden; }
+        .loading-badge { position: absolute; background: #ffc107; color: black; font-size: 12px; padding: 2px 5px; border-radius: 3px; z-index: 20; top: -20px; left: 0; font-weight: bold;}
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>Smart Text Replacer</h1>
-        <p>1. Upload Image &nbsp;|&nbsp; 2. Mouse se purane text par ek Box banaye &nbsp;|&nbsp; 3. Naya text type karein</p>
-    </div>
-
     <div class="toolbar">
-        <div>
-            <label>Upload Image:</label>
-            <input type="file" id="uploadImg" accept="image/png, image/jpeg, image/webp">
-        </div>
-        <div>
-            <label>Text Color:</label>
-            <input type="color" id="textColor" value="#000000">
-        </div>
-        <div>
-            <label>Font Size:</label>
-            <input type="number" id="fontSize" value="20" style="width: 60px;">
-        </div>
-        <button class="btn btn-success" id="downloadBtn">Download Image</button>
+        <input type="password" id="geminiApiKey" class="api-input" placeholder="Paste your Gemini API Key here...">
+        <input type="file" id="uploadImg" accept="image/*">
+        <label>Color:</label>
+        <input type="color" id="textColor" value="#000000">
+        <label>Size:</label>
+        <input type="number" id="fontSize" value="24" style="width: 50px;">
+        <button id="downloadBtn" style="background-color: #28a745;">Download</button>
     </div>
 
     <div id="editor-container">
@@ -96,13 +42,14 @@
     let isDrawing = false;
     let startX, startY, endX, endY;
     let savedImageData = null;
-    let fileName = "edited_image.png";
+    let originalFileName = "ai_edited_image.png";
+    let activeInput = null;
 
-    // Image Upload Function
+    // 1. Image Upload
     document.getElementById('uploadImg').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-        fileName = file.name.split('.')[0] + "_edited.png";
+        originalFileName = file.name.split('.')[0] + "_edited.png";
         
         const reader = new FileReader();
         reader.onload = function(event) {
@@ -116,162 +63,192 @@
         reader.readAsDataURL(file);
     });
 
-    // Auto-detect background color from the edges of the box
-    function getAverageEdgeColor(x, y, w, h) {
+    // Color detection for background
+    function getAverageColor(x, y, w, h) {
         try {
-            x = Math.max(0, x); y = Math.max(0, y);
-            w = Math.min(w, canvas.width - x); h = Math.min(h, canvas.height - y);
-            
             const imgData = ctx.getImageData(x, y, w, h).data;
             let r=0, g=0, b=0, count=0;
-            
             for (let i = 0; i < imgData.length; i += 4) {
-                let px = (i / 4) % w;
-                let py = Math.floor((i / 4) / w);
-                
-                // Box ke sirf bahari hisse (border) se color detect karna taaki text ka color mix na ho
-                if (px < 3 || px > w - 3 || py < 3 || py > h - 3) {
-                    r += imgData[i];
-                    g += imgData[i+1];
-                    b += imgData[i+2];
-                    count++;
+                let px = (i / 4) % w, py = Math.floor((i / 4) / w);
+                if (px < 4 || px > w - 4 || py < 4 || py > h - 4) {
+                    r += imgData[i]; g += imgData[i+1]; b += imgData[i+2]; count++;
                 }
             }
-            if (count === 0) return '#ffffff';
-            return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
-        } catch(e) {
-            return '#ffffff';
+            return count === 0 ? '#ffffff' : `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
+        } catch(e) { return '#ffffff'; }
+    }
+
+    // Getting Coordinates (Supports both Mouse and Mobile Touch)
+    function getCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function startDraw(e) {
+        if(e.touches) e.preventDefault(); // Rokne ke liye taaki mobile scroll na ho
+        commitActiveInput();
+        const pos = getCoords(e);
+        startX = pos.x; startY = pos.y;
+        isDrawing = true;
+        savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawMove(e) {
+        if (!isDrawing) return;
+        if(e.touches) e.preventDefault();
+        const pos = getCoords(e);
+        ctx.putImageData(savedImageData, 0, 0);
+        ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
+        ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
+    }
+
+    async function endDraw(e) {
+        if (!isDrawing) return;
+        isDrawing = false;
+        const pos = e.changedTouches ? getCoords({touches: e.changedTouches}) : getCoords(e);
+        endX = pos.x; endY = pos.y;
+
+        let x = Math.min(startX, endX), y = Math.min(startY, endY);
+        let w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+
+        if (w < 15 || h < 15) { ctx.putImageData(savedImageData, 0, 0); return; }
+
+        ctx.putImageData(savedImageData, 0, 0); // Dashed line hatao
+        
+        // --- GEMINI API KE LIYE IMAGE CROP KARNA ---
+        const croppedImgData = ctx.getImageData(x, y, w, h);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w; tempCanvas.height = h;
+        tempCanvas.getContext('2d').putImageData(croppedImgData, 0, 0);
+        const base64Image = tempCanvas.toDataURL('image/jpeg').split(',')[1];
+
+        // Background color bhar do (Purana text hide)
+        ctx.fillStyle = getAverageColor(x, y, w, h);
+        ctx.fillRect(x, y, w, h);
+
+        // Text input banao
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+        createTextInput(x, y, w, h, scaleX, scaleY);
+
+        // Gemini AI Call
+        const apiKey = document.getElementById('geminiApiKey').value;
+        if (apiKey) {
+            fetchGeminiText(apiKey, base64Image, activeInput);
         }
     }
 
-    // Mouse Events to Draw Box
-    canvas.addEventListener('mousedown', function(e) {
-        commitActiveInput(); // Agar pehle se typing chal rahi ho toh usko image par save kar do
-        
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        startX = (e.clientX - rect.left) * scaleX;
-        startY = (e.clientY - rect.top) * scaleY;
-        isDrawing = true;
-        savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    });
+    // Events Attach Karna (Mouse + Mobile Touch)
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', drawMove);
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('touchstart', startDraw, {passive: false});
+    canvas.addEventListener('touchmove', drawMove, {passive: false});
+    canvas.addEventListener('touchend', endDraw);
 
-    canvas.addEventListener('mousemove', function(e) {
-        if (!isDrawing) return;
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        let currentX = (e.clientX - rect.left) * scaleX;
-        let currentY = (e.clientY - rect.top) * scaleY;
-        
-        ctx.putImageData(savedImageData, 0, 0); 
-        
-        // Dashed line banani taaki user ko box dikhe
-        ctx.strokeStyle = '#007bff';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
-        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
-    });
+    function createTextInput(x, y, w, h, scaleX, scaleY) {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = (x / scaleX) + 'px';
+        wrapper.style.top = (y / scaleY) + 'px';
 
-    canvas.addEventListener('mouseup', function(e) {
-        if (!isDrawing) return;
-        isDrawing = false;
-        
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        endX = (e.clientX - rect.left) * scaleX;
-        endY = (e.clientY - rect.top) * scaleY;
-        
-        let x = Math.min(startX, endX);
-        let y = Math.min(startY, endY);
-        let w = Math.abs(endX - startX);
-        let h = Math.abs(endY - startY);
-        
-        if (w < 10 || h < 10) {
-            ctx.putImageData(savedImageData, 0, 0); // Click galti se hua toh ignore karein
-            return; 
-        }
+        const badge = document.createElement('div');
+        badge.className = 'loading-badge';
+        badge.innerText = 'AI Ready';
+        badge.id = 'ai-badge';
 
-        ctx.putImageData(savedImageData, 0, 0); // Dashed line hatayein
-        
-        // Smart Erase: Background color nikal kar box me bhar do
-        const bgColor = getAverageEdgeColor(x, y, w, h);
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(x, y, w, h);
-        
-        // Turant uske upar typing field khol do
-        createTextInput(x, y, w, h, rect, scaleX, scaleY);
-    });
-
-    let activeInput = null;
-
-    function createTextInput(x, y, w, h, canvasRect, scaleX, scaleY) {
         const input = document.createElement('textarea');
         input.className = 'floating-input';
-        
-        input.style.left = (x / scaleX) + 'px';
-        input.style.top = (y / scaleY) + 'px';
         input.style.width = (w / scaleX) + 'px';
         input.style.height = (h / scaleY) + 'px';
         
         const fontSize = document.getElementById('fontSize').value;
-        const textColor = document.getElementById('textColor').value;
-        
         input.style.fontSize = (fontSize / scaleY) + 'px'; 
-        input.style.color = textColor;
-        input.style.lineHeight = (fontSize / scaleY) + 'px';
+        input.style.color = document.getElementById('textColor').value;
         
-        input.dataset.cx = x;
-        input.dataset.cy = y;
-        input.dataset.cw = w;
+        input.dataset.cx = x; input.dataset.cy = y;
+
+        wrapper.appendChild(badge);
+        wrapper.appendChild(input);
+        container.appendChild(wrapper);
         
-        container.appendChild(input);
         input.focus();
         activeInput = input;
-        
-        // Jab user bahar click kare tab text ko image par chipka do
-        input.addEventListener('blur', commitActiveInput);
+        wrapper.activeWrapper = true;
+    }
+
+    // Gemini API Fetch Function
+    async function fetchGeminiText(apiKey, base64Image, inputElement) {
+        const badge = document.getElementById('ai-badge');
+        badge.innerText = '🤖 Reading...';
+        badge.style.background = '#17a2b8'; badge.style.color = 'white';
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: "Read the text in this image. Return strictly ONLY the text you see. No markdown, no quotes, no explanations." },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Image } }
+                        ]
+                    }]
+                })
+            });
+            const data = await response.json();
+            if (data.candidates && data.candidates[0].content.parts[0].text) {
+                inputElement.value = data.candidates[0].content.parts[0].text.trim();
+                badge.innerText = '✅ Done';
+                badge.style.background = '#28a745';
+            }
+        } catch (error) {
+            badge.innerText = '❌ Failed';
+            badge.style.background = '#dc3545';
+        }
+        setTimeout(() => { if(badge) badge.style.display = 'none'; }, 2000);
     }
 
     function commitActiveInput() {
         if (!activeInput) return;
-        
         const text = activeInput.value;
         if (text.trim() !== '') {
-            const cx = parseFloat(activeInput.dataset.cx);
-            const cy = parseFloat(activeInput.dataset.cy);
+            const cx = parseFloat(activeInput.dataset.cx), cy = parseFloat(activeInput.dataset.cy);
             const fontSize = document.getElementById('fontSize').value;
-            const textColor = document.getElementById('textColor').value;
-            
             ctx.font = `${fontSize}px Arial`;
-            ctx.fillStyle = textColor;
+            ctx.fillStyle = document.getElementById('textColor').value;
             ctx.textBaseline = 'top';
             
-            // Image par actually me likhna
             const lines = text.split('\n');
             let currentY = cy + 2; 
             for(let i=0; i<lines.length; i++) {
                 ctx.fillText(lines[i], cx + 2, currentY);
-                currentY += parseInt(fontSize);
+                currentY += parseInt(fontSize) + 2;
             }
         }
-        
-        if (activeInput.parentNode) {
-            activeInput.parentNode.removeChild(activeInput);
-        }
+        const wrapper = activeInput.parentNode;
+        if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
         activeInput = null;
     }
 
-    // Download Button
+    // Click outside to save text
+    document.addEventListener('click', function(e) {
+        if (activeInput && e.target !== activeInput && e.target.tagName !== 'CANVAS') {
+            commitActiveInput();
+        }
+    });
+
     document.getElementById('downloadBtn').addEventListener('click', function() {
         commitActiveInput(); 
         const link = document.createElement('a');
-        link.download = fileName;
+        link.download = originalFileName;
         link.href = canvas.toDataURL("image/png");
         link.click();
     });
