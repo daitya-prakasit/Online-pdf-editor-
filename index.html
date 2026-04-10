@@ -3,77 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Movable Text Image Editor</title>
+    <title>Pro Image Editor</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .toolbar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 900px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;}
-        .tool-group { display: flex; align-items: center; gap: 8px; }
-        input[type="file"], input[type="text"], input[type="color"], input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        button { background-color: #007bff; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #0056b3; }
-        #canvas-wrapper { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 100%; max-height: 80vh; overflow: auto; background: white; touch-action: none; border: 1px solid #ddd;}
-        canvas { display: block; cursor: default; max-width: 100%; height: auto; }
-        
-        /* Floating Text Box */
-        .movable-text {
-            position: absolute;
-            cursor: move;
-            border: 2px solid transparent;
-            padding: 2px;
-            user-select: none; /* Text select na ho, sirf drag ho */
-            white-space: nowrap; /* Multi-line handle karne ke liye naya logix chahiye, abhi single line hai */
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-color: #f3f4f6;
+            --panel-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
-        /* Selected State */
-        .movable-text.selected {
-            border: 2px dashed #007bff;
-            background-color: rgba(0, 123, 255, 0.1);
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Navbar & Layout */
+        .app-container { display: flex; flex-direction: column; width: 100%; }
+        .topbar { background: var(--panel-bg); height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--border); z-index: 10; }
+        .topbar h1 { font-size: 20px; color: var(--primary); display: flex; align-items: center; gap: 10px; }
+        
+        .main-workspace { display: flex; flex: 1; height: calc(100vh - 60px); }
+
+        /* Left Sidebar Tools */
+        .sidebar { width: 280px; background: var(--panel-bg); border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .section-title { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; }
+        
+        /* Buttons & Inputs */
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-outline:hover { background: var(--bg-color); }
+        .btn.active { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+        
+        input[type="file"] { display: none; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
+        .control-group label { font-size: 13px; color: var(--text-muted); font-weight: 500;}
+        .input-box { padding: 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; width: 100%; }
+        .row { display: flex; gap: 10px; }
+        
+        /* Canvas Area */
+        .canvas-area { flex: 1; padding: 20px; display: flex; justify-content: center; align-items: center; overflow: auto; position: relative; background: repeating-conic-gradient(#e5e7eb 0% 25%, #f9fafb 0% 50%) 50% / 20px 20px; }
+        
+        #editor-wrapper { position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: white; }
+        canvas { display: block; max-width: 100%; height: auto; }
+        
+        /* Floating Editable Text */
+        .pro-text {
+            position: absolute; cursor: grab; padding: 4px; border: 1px solid transparent; user-select: none; white-space: pre-wrap; word-wrap: break-word; min-width: 20px; min-height: 20px;
         }
+        .pro-text.selected { border: 2px dashed var(--primary); cursor: grab; }
+        .pro-text.selected::after { content: '✥'; position: absolute; top: -12px; left: -12px; background: var(--primary); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; pointer-events: none;}
+        .pro-text:focus { outline: none; border: 2px solid var(--primary); cursor: text; user-select: text;}
         
-        /* Instructions for deletion */
-        .instructions { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px; }
+        /* Properties Panel (Hidden by default) */
+        #textProperties { display: none; padding-top: 15px; border-top: 1px solid var(--border); margin-top: 10px; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="toolbar">
-        <div class="tool-group">
-            <input type="file" id="uploadImg" accept="image/*">
-        </div>
-        
-        <div class="tool-group">
-            <input type="text" id="newTextContent" placeholder="Naya text yahan likhein...">
-            <button id="addTextBtn" class="active-mode">🟢 Add Movable Text</button>
+<div class="app-container">
+    <div class="topbar">
+        <h1>✨ ProEditor</h1>
+        <button class="btn btn-primary" id="downloadBtn" style="width: auto; padding: 8px 20px;">⬇ Export Image</button>
+    </div>
+
+    <div class="main-workspace">
+        <div class="sidebar">
+            <div>
+                <div class="section-title">1. Document</div>
+                <label for="uploadImg" class="btn btn-outline" style="margin-bottom: 10px;">📁 Upload Image</label>
+                <input type="file" id="uploadImg" accept="image/png, image/jpeg, image/webp">
+            </div>
+
+            <div>
+                <div class="section-title">2. Tools</div>
+                <div class="row">
+                    <button class="btn btn-outline active" id="modeSelect">🖱 Select</button>
+                    <button class="btn btn-outline" id="modeErase">🧹 Hide Text</button>
+                </div>
+                <button class="btn btn-outline" id="addTextBtn" style="margin-top: 10px;">➕ Add Text</button>
+                <p id="eraseHint" class="hidden" style="font-size: 12px; color: #eab308; margin-top: 8px; line-height: 1.4;">Hint: Draw a box over old text to automatically hide it with background color.</p>
+            </div>
+
+            <div id="textProperties">
+                <div class="section-title">Text Properties</div>
+                
+                <div class="control-group">
+                    <label>Color</label>
+                    <input type="color" id="propColor" class="input-box" style="height: 40px; padding: 2px;">
+                </div>
+                
+                <div class="row">
+                    <div class="control-group" style="flex: 1;">
+                        <label>Size (px)</label>
+                        <input type="number" id="propSize" class="input-box" min="10" max="200">
+                    </div>
+                    <div class="control-group" style="flex: 1;">
+                        <label>Weight</label>
+                        <select id="propWeight" class="input-box">
+                            <option value="normal">Normal</option>
+                            <option value="bold">Bold</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn" id="deleteTextBtn" style="background: #fee2e2; color: #ef4444; margin-top: 10px;">🗑 Delete Selected</button>
+            </div>
         </div>
 
-        <div class="tool-group">
-            <label>Color:</label>
-            <input type="color" id="textColor" value="#000000">
-            <label>Size:</label>
-            <input type="number" id="fontSize" value="30" style="width: 55px;">
-        </div>
-
-        <div class="tool-group">
-            <button id="downloadBtn" style="background-color: #28a745;">Download</button>
+        <div class="canvas-area" id="canvasContainer">
+            <div id="editor-wrapper">
+                <canvas id="canvas"></canvas>
+            </div>
         </div>
     </div>
-    
-    <div class="instructions">Tip: Click text to select. Drag to move. Press 'Delete' keyboard key to remove.</div>
-
-    <div id="canvas-wrapper">
-        <canvas id="canvas"></canvas>
-        </div>
+</div>
 
 <script>
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const wrapper = document.getElementById('canvas-wrapper');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const wrapper = document.getElementById('editor-wrapper');
     const img = new Image();
-    let originalFileName = "edited_image.png";
-    let textObjects = []; // Array to store all text elements
-    let selectedTextWrapper = null; // Track selected element
     
-    // 1. Image Upload
+    let currentMode = 'select'; // 'select' or 'erase'
+    let originalFileName = "pro_edit.png";
+    let selectedElement = null;
+    let textIdCounter = 0;
+
+    // Drawing state for eraser
+    let isDrawing = false;
+    let startX, startY;
+    let savedImageData = null;
+
+    // UI Elements
+    const modeSelectBtn = document.getElementById('modeSelect');
+    const modeEraseBtn = document.getElementById('modeErase');
+    const textPropsPanel = document.getElementById('textProperties');
+
+    // --- TOOL SWITCHING ---
+    modeSelectBtn.addEventListener('click', () => setMode('select'));
+    modeEraseBtn.addEventListener('click', () => setMode('erase'));
+
+    function setMode(mode) {
+        currentMode = mode;
+        modeSelectBtn.classList.toggle('active', mode === 'select');
+        modeEraseBtn.classList.toggle('active', mode === 'erase');
+        canvas.style.cursor = mode === 'erase' ? 'crosshair' : 'default';
+        document.getElementById('eraseHint').classList.toggle('hidden', mode !== 'erase');
+        
+        if (mode === 'erase') deselectAll();
+    }
+
+    // --- IMAGE UPLOAD ---
     document.getElementById('uploadImg').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -85,203 +171,276 @@
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
-                
-                // Nayi image par purane text objects clear karna (agar ho toh)
-                clearAllTexts();
+                document.querySelectorAll('.pro-text').forEach(el => el.remove());
+                deselectAll();
             }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    // 2. Add New Movable Text
+    // --- ADD TEXT ---
     document.getElementById('addTextBtn').addEventListener('click', function() {
-        if(!img.src) { alert("Pehle Image upload karein!"); return; }
+        if(!img.src) { alert("Please upload an image first."); return; }
+        setMode('select');
         
-        const content = document.getElementById('newTextContent').value;
-        if (!content.trim()) { alert("Kripya text box me kuch likhein!"); return; }
-
-        const fontSize = document.getElementById('fontSize').value;
-        const color = document.getElementById('textColor').value;
-        
-        // Default position image ke beech me (canvas coordinates)
-        const canvasX = canvas.width / 4;
-        const canvasY = canvas.height / 2;
-        
-        createTextElement(content, canvasX, canvasY, fontSize, color);
-        document.getElementById('newTextContent').value = ''; // Reset input
+        const x = canvas.width / 2;
+        const y = canvas.height / 2;
+        createNewText("Double Click to Edit", x, y, 32, "#000000", "bold");
     });
 
-    // 3. Create & Manage Movable HTML Elements over Canvas
-    function createTextElement(content, x, y, size, color) {
-        const textWrapper = document.createElement('div');
-        textWrapper.className = 'movable-text';
-        textWrapper.innerText = content;
+    function createNewText(content, x, y, size, color, weight) {
+        const el = document.createElement('div');
+        el.className = 'pro-text';
+        el.contentEditable = false; // Turned on only upon double click
+        el.innerText = content;
+        el.id = 'text_' + (textIdCounter++);
         
-        // CSS properties setting
-        textWrapper.style.fontSize = size + 'px';
-        textWrapper.style.color = color;
-        textWrapper.style.fontFamily = 'Arial, sans-serif'; // Default font
-        textWrapper.style.fontWeight = 'bold';
+        el.dataset.size = size;
+        el.dataset.color = color;
+        el.dataset.weight = weight;
         
-        // Initial position (CSS absolutely positioned)
-        // We calculate positions relative to image scale
+        updateElementStyle(el);
+        
+        // Initial center positioning
         const rect = canvas.getBoundingClientRect();
         const scaleX = rect.width / canvas.width;
-        const scaleY = rect.height / canvas.height;
+        el.style.left = ((x * scaleX) - 50) + 'px'; 
+        el.style.top = (y * (rect.height / canvas.height)) + 'px';
         
-        textWrapper.style.left = (x * scaleX) + 'px';
-        textWrapper.style.top = (y * scaleY) + 'px';
-        
-        // Store underlying data
-        textWrapper.dataset.origX = x;
-        textWrapper.dataset.origY = y;
-        textWrapper.dataset.size = size;
-        textWrapper.dataset.color = color;
-
-        // --- Drag & Selection Logic ---
-        setupDragging(textWrapper);
-        textWrapper.addEventListener('click', (e) => selectText(textWrapper, e));
-
-        wrapper.appendChild(textWrapper);
-        selectText(textWrapper); // Select immediately upon creation
-    }
-    
-    function setupDragging(el) {
-        let isDragging = false;
-        let startX, startY;
-
-        function onMouseDown(e) {
-            isDragging = true;
-            selectText(el, e); // Selection handles z-index, so it brings it to front
-
-            const rect = wrapper.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // Mouse relative offset inside element
-            startX = clientX - el.offsetLeft - rect.left;
-            startY = clientY - el.offsetTop - rect.top;
-            e.stopPropagation();
-        }
-
-        function onMouseMove(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-
-            const rect = wrapper.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-            // Nayi position calculate karna
-            let newX = clientX - rect.left - startX;
-            let newY = clientY - rect.top - startY;
-
-            // Apply positions (HTML pixels)
-            el.style.left = newX + 'px';
-            el.style.top = newY + 'px';
-            
-            // Wapas original image coordinates update karna storage ke liye
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            el.dataset.origX = newX * scaleX;
-            el.dataset.origY = newY * scaleY;
-        }
-
-        function onMouseUp() { isDragging = false; }
-
-        el.addEventListener('mousedown', onMouseDown);
-        el.addEventListener('touchstart', onMouseDown, {passive: false});
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('touchmove', onMouseMove, {passive: false});
-        document.addEventListener('mouseup', onMouseUp);
-        document.addEventListener('touchend', onMouseUp);
-    }
-    
-    function selectText(el, event) {
-        if(event) event.stopPropagation();
-        
-        // Deselect previous
-        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
-        
-        // Select new
-        selectedTextWrapper = el;
-        selectedTextWrapper.classList.add('selected');
-        
-        // Update toolbar values to match selected
-        document.getElementById('fontSize').value = selectedTextWrapper.dataset.size;
-        // Color input doesn't update easily due to different format issues, keep current.
-    }
-    
-    // Clear selection click anywhere else
-    wrapper.addEventListener('click', () => {
-        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
-        selectedTextWrapper = null;
-    });
-
-    // Handle Deletion via Keyboard 'Delete' key
-    document.addEventListener('keydown', function(e) {
-        if (selectedTextWrapper && (e.key === 'Delete' || e.key === 'Backspace')) {
-            wrapper.removeChild(selectedTextWrapper);
-            selectedTextWrapper = null;
-        }
-    });
-
-    // Toolbar updates selected text color/size
-    document.getElementById('textColor').addEventListener('input', function() {
-        if(selectedTextWrapper) {
-            selectedTextWrapper.style.color = this.value;
-            selectedTextWrapper.dataset.color = this.value;
-        }
-    });
-    
-    document.getElementById('fontSize').addEventListener('input', function() {
-        if(selectedTextWrapper) {
-            selectedTextWrapper.style.fontSize = this.value + 'px';
-            selectedTextWrapper.dataset.size = this.value;
-        }
-    });
-
-    function clearAllTexts() {
-        const texts = wrapper.querySelectorAll('.movable-text');
-        texts.forEach(text => wrapper.removeChild(text));
-        selectedTextWrapper = null;
+        setupTextEvents(el);
+        wrapper.appendChild(el);
+        selectElement(el);
     }
 
-    // 4. DOWNLOAD: Combine Image + Floating Text Objects onto Canvas
-    document.getElementById('downloadBtn').addEventListener('click', function() {
-        if(!img.src) { alert("Pehle Image upload karein!"); return; }
+    function updateElementStyle(el) {
+        const rect = canvas.getBoundingClientRect();
+        const scale = rect.width / canvas.width;
         
-        // Deselect current if any
-        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
+        el.style.fontSize = (parseFloat(el.dataset.size) * scale) + 'px';
+        el.style.color = el.dataset.color;
+        el.style.fontWeight = el.dataset.weight;
+        el.style.fontFamily = 'Arial, sans-serif';
+    }
 
-        // Create a temporary final canvas
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = canvas.width;
-        finalCanvas.height = canvas.height;
-        const finalCtx = finalCanvas.getContext('2d');
-        
-        // Draw original image first
-        finalCtx.drawImage(img, 0, 0);
-        
-        // Draw all floating text elements at their stored positions
-        const floatingTexts = wrapper.querySelectorAll('.movable-text');
-        floatingTexts.forEach(textWrapper => {
-            const x = parseFloat(textWrapper.dataset.origX);
-            const y = parseFloat(textWrapper.dataset.origY);
-            const size = parseInt(textWrapper.dataset.size);
-            const color = textWrapper.dataset.color;
-            const textContent = textWrapper.innerText;
+    // --- DRAG, DROP & EDIT TEXT ---
+    function setupTextEvents(el) {
+        let isDragging = false, dragStartX, dragStartY;
 
-            finalCtx.font = `bold ${size}px Arial, sans-serif`;
-            finalCtx.fillStyle = color;
-            finalCtx.textBaseline = 'top'; // Matches HTML rendering logic
-            
-            // Draw on actual image pixels
-            finalCtx.fillText(textContent, x, y);
+        // Double click to edit text content
+        el.addEventListener('dblclick', function(e) {
+            if(currentMode !== 'select') return;
+            el.contentEditable = true;
+            el.focus();
+            el.style.cursor = 'text';
+            document.execCommand('selectAll', false, null); // Select all text automatically
         });
 
-        // Generate download link
+        el.addEventListener('blur', function() {
+            el.contentEditable = false;
+            el.style.cursor = 'grab';
+            if(el.innerText.trim() === '') el.remove(); // Delete if empty
+        });
+
+        // Mouse Down for dragging
+        el.addEventListener('mousedown', function(e) {
+            if(currentMode !== 'select' || el.contentEditable === "true") return;
+            selectElement(el);
+            isDragging = true;
+            el.style.cursor = 'grabbing';
+            const rect = wrapper.getBoundingClientRect();
+            dragStartX = e.clientX - el.offsetLeft - rect.left;
+            e.stopPropagation();
+        });
+
+        // Touch Start for dragging
+        el.addEventListener('touchstart', function(e) {
+            if(currentMode !== 'select' || el.contentEditable === "true") return;
+            selectElement(el);
+            isDragging = true;
+            const rect = wrapper.getBoundingClientRect();
+            dragStartX = e.touches[0].clientX - el.offsetLeft - rect.left;
+            dragStartY = e.touches[0].clientY - el.offsetTop - rect.top;
+            e.stopPropagation();
+        }, {passive: false});
+
+        function moveHandler(clientX, clientY) {
+            if (!isDragging) return;
+            const rect = wrapper.getBoundingClientRect();
+            let newX = clientX - rect.left - dragStartX;
+            let newY = clientY - rect.top - (dragStartY || (clientY - el.offsetTop - rect.top)); // Fallback for mouse Y offset
+            
+            el.style.left = newX + 'px';
+            el.style.top = newY + 'px';
+        }
+
+        document.addEventListener('mousemove', e => moveHandler(e.clientX, e.clientY));
+        document.addEventListener('touchmove', e => {
+            if(isDragging) { e.preventDefault(); moveHandler(e.touches[0].clientX, e.touches[0].clientY); }
+        }, {passive: false});
+
+        function upHandler() { 
+            isDragging = false; 
+            if(el.contentEditable === "false") el.style.cursor = 'grab';
+        }
+        document.addEventListener('mouseup', upHandler);
+        document.addEventListener('touchend', upHandler);
+    }
+
+    // --- SELECTION & PROPERTIES PANEL ---
+    function selectElement(el) {
+        deselectAll();
+        selectedElement = el;
+        selectedElement.classList.add('selected');
+        
+        // Show and populate properties panel
+        textPropsPanel.style.display = 'block';
+        document.getElementById('propColor').value = el.dataset.color;
+        document.getElementById('propSize').value = el.dataset.size;
+        document.getElementById('propWeight').value = el.dataset.weight;
+    }
+
+    function deselectAll() {
+        if(selectedElement) {
+            selectedElement.classList.remove('selected');
+            selectedElement.contentEditable = false;
+        }
+        selectedElement = null;
+        textPropsPanel.style.display = 'none';
+    }
+
+    // Deselect if clicked outside
+    wrapper.addEventListener('mousedown', (e) => { if(e.target === canvas && currentMode === 'select') deselectAll(); });
+    wrapper.addEventListener('touchstart', (e) => { if(e.target === canvas && currentMode === 'select') deselectAll(); });
+
+    // Properties Panel Events
+    document.getElementById('propColor').addEventListener('input', function() {
+        if(selectedElement) { selectedElement.dataset.color = this.value; updateElementStyle(selectedElement); }
+    });
+    document.getElementById('propSize').addEventListener('input', function() {
+        if(selectedElement) { selectedElement.dataset.size = this.value; updateElementStyle(selectedElement); }
+    });
+    document.getElementById('propWeight').addEventListener('change', function() {
+        if(selectedElement) { selectedElement.dataset.weight = this.value; updateElementStyle(selectedElement); }
+    });
+    document.getElementById('deleteTextBtn').addEventListener('click', function() {
+        if(selectedElement) { selectedElement.remove(); deselectAll(); }
+    });
+
+    // Keyboard Delete
+    document.addEventListener('keydown', function(e) {
+        if (selectedElement && selectedElement.contentEditable === "false" && (e.key === 'Delete' || e.key === 'Backspace')) {
+            selectedElement.remove(); deselectAll();
+        }
+    });
+
+    // Handle Window Resize to keep text scaled
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.pro-text').forEach(el => updateElementStyle(el));
+    });
+
+    // --- SMART ERASER TOOL (Background color auto-fill) ---
+    function getAverageEdgeColor(x, y, w, h) {
+        try {
+            const imgData = ctx.getImageData(x, y, w, h).data;
+            let r=0, g=0, b=0, count=0;
+            for (let i = 0; i < imgData.length; i += 4) {
+                let px = (i / 4) % w, py = Math.floor((i / 4) / w);
+                if (px < 3 || px > w - 3 || py < 3 || py > h - 3) {
+                    r += imgData[i]; g += imgData[i+1]; b += imgData[i+2]; count++;
+                }
+            }
+            return count === 0 ? '#ffffff' : `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
+        } catch(e) { return '#ffffff'; }
+    }
+
+    function getCanvasCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+    }
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('touchstart', startDraw, {passive: false});
+
+    function startDraw(e) {
+        if(currentMode !== 'erase' || !img.src) return;
+        if(e.touches) e.preventDefault();
+        const pos = getCanvasCoords(e);
+        startX = pos.x; startY = pos.y;
+        isDrawing = true;
+        savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    }
+
+    canvas.addEventListener('mousemove', drawMove);
+    canvas.addEventListener('touchmove', drawMove, {passive: false});
+
+    function drawMove(e) {
+        if (!isDrawing || currentMode !== 'erase') return;
+        if(e.touches) e.preventDefault();
+        const pos = getCanvasCoords(e);
+        ctx.putImageData(savedImageData, 0, 0);
+        ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
+        ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
+    }
+
+    canvas.addEventListener('mouseup', endDraw);
+    canvas.addEventListener('touchend', endDraw);
+
+    function endDraw(e) {
+        if (!isDrawing || currentMode !== 'erase') return;
+        isDrawing = false;
+        
+        const pos = e.changedTouches ? getCanvasCoords({touches: e.changedTouches}) : getCanvasCoords(e);
+        let x = Math.min(startX, pos.x), y = Math.min(startY, pos.y);
+        let w = Math.abs(pos.x - startX), h = Math.abs(pos.y - startY);
+
+        if (w < 10 || h < 10) { ctx.putImageData(savedImageData, 0, 0); return; }
+        ctx.putImageData(savedImageData, 0, 0); 
+        
+        // Fill box with smart background color
+        ctx.fillStyle = getAverageEdgeColor(x, y, w, h);
+        ctx.fillRect(x, y, w, h);
+        
+        // Auto-switch to select mode and add text box right over erased area
+        setMode('select');
+        createNewText("New Text", x + 5, y + 5, 24, "#000000", "bold");
+    }
+
+    // --- EXPORT IMAGE ---
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+        if(!img.src) { alert("No image to export!"); return; }
+        deselectAll();
+
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = canvas.width; finalCanvas.height = canvas.height;
+        const finalCtx = finalCanvas.getContext('2d');
+        
+        finalCtx.drawImage(canvas, 0, 0);
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        document.querySelectorAll('.pro-text').forEach(el => {
+            const x = el.offsetLeft * scaleX;
+            const y = el.offsetTop * scaleY;
+            const size = parseFloat(el.dataset.size);
+            
+            finalCtx.font = `${el.dataset.weight} ${size}px Arial, sans-serif`;
+            finalCtx.fillStyle = el.dataset.color;
+            finalCtx.textBaseline = 'top';
+            
+            // Handle multi-line text export
+            const lines = el.innerText.split('\n');
+            lines.forEach((line, index) => {
+                finalCtx.fillText(line, x, y + (index * size * 1.2)); // 1.2 is line-height approximation
+            });
+        });
+
         const link = document.createElement('a');
         link.download = originalFileName;
         link.href = finalCanvas.toDataURL("image/png");
