@@ -1,1008 +1,132 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASUR PDF TEXT EDITOR - DIRECT TEXT EDITING</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Advanced PDF Editor - Text Replacer</title>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background: #0d1117;
-            font-family: 'Segoe UI', 'Arial', sans-serif;
-            color: #fff;
-            min-height: 100vh;
-        }
-
-        .header {
-            background: #161b22;
-            padding: 12px 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #e94560;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: 900;
-        }
-
-        .logo span {
-            color: #e94560;
-        }
-
-        .badge {
-            background: #e94560;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .main-container {
-            display: flex;
-            height: calc(100vh - 60px);
-        }
-
-        /* टेक्स्ट एडिटर पैनल */
-        .editor-panel {
-            width: 320px;
-            background: #161b22;
-            padding: 20px;
-            border-right: 1px solid #30363d;
-            overflow-y: auto;
-        }
-
-        .section {
-            margin-bottom: 25px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid #30363d;
-        }
-
-        .section-title {
-            color: #e94560;
-            font-size: 14px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .upload-btn {
-            width: 100%;
-            padding: 14px;
-            background: #238636;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-
-        .upload-btn:hover {
-            background: #2ea043;
-        }
-
-        .text-list {
-            max-height: 300px;
-            overflow-y: auto;
-            margin-top: 15px;
-        }
-
-        .text-item {
-            background: #21262d;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: 1px solid #30363d;
-            transition: all 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .text-item:hover {
-            border-color: #e94560;
-            background: #2d3748;
-        }
-
-        .text-item.active {
-            border-color: #e94560;
-            background: #1a2a4a;
-        }
-
-        .text-preview {
-            font-size: 12px;
-            color: #8b949e;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 180px;
-        }
-
-        .text-actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        .icon-btn {
-            background: none;
-            border: none;
-            color: #8b949e;
-            cursor: pointer;
-            padding: 4px 6px;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .icon-btn:hover {
-            background: #30363d;
-            color: #e94560;
-        }
-
-        .edit-area {
-            margin-top: 15px;
-        }
-
-        .edit-area textarea {
-            width: 100%;
-            height: 120px;
-            padding: 12px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: white;
-            font-size: 14px;
-            resize: vertical;
-            margin-bottom: 10px;
-        }
-
-        .edit-area textarea:focus {
-            outline: none;
-            border-color: #e94560;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            flex: 1;
-        }
-
-        .btn-primary {
-            background: #e94560;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #ff6b6b;
-        }
-
-        .btn-secondary {
-            background: #21262d;
-            color: white;
-            border: 1px solid #30363d;
-        }
-
-        .btn-secondary:hover {
-            background: #30363d;
-        }
-
-        .color-input {
-            width: 100%;
-            height: 40px;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            background: #0d1117;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-
-        select {
-            width: 100%;
-            padding: 10px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: white;
-            margin-bottom: 10px;
-        }
-
-        .slider-container {
-            margin-bottom: 12px;
-        }
-
-        .slider-container label {
-            font-size: 12px;
-            color: #8b949e;
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .slider-container input {
-            width: 100%;
-            accent-color: #e94560;
-        }
-
-        /* कैनवास एरिया */
-        .canvas-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #0d1117;
-        }
-
-        .toolbar {
-            padding: 10px 20px;
-            background: #161b22;
-            border-bottom: 1px solid #30363d;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .tool-btn {
-            padding: 8px 16px;
-            background: #21262d;
-            color: white;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .tool-btn:hover {
-            background: #30363d;
-        }
-
-        .tool-btn.active {
-            background: #e94560;
-            border-color: #e94560;
-        }
-
-        .page-controls {
-            margin-left: auto;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .page-info {
-            color: #e94560;
-            font-weight: bold;
-            margin: 0 10px;
-        }
-
-        .canvas-wrapper {
-            flex: 1;
-            overflow: auto;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            background: #1a1f2a;
-        }
-
-        .canvas-container {
-            position: relative;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
-        }
-
-        #pdf-canvas {
-            display: block;
-        }
-
-        #text-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        .action-bar {
-            padding: 15px 20px;
-            background: #161b22;
-            border-top: 1px solid #30363d;
-            display: flex;
-            gap: 15px;
-            justify-content: flex-end;
-        }
-
-        .loading {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #161b22;
-            padding: 20px 40px;
-            border-radius: 10px;
-            border: 2px solid #e94560;
-            z-index: 1000;
-        }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #30363d;
-            border-top: 4px solid #e94560;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        #file-input {
-            display: none;
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #0d1117;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #e94560;
-            border-radius: 3px;
-        }
+        :root { --bg: #0a0a0a; --panel: #1a1a1a; --accent: #ff3333; --text: #e0e0e0; }
+        body { font-family: monospace; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 950px; margin: auto; background: var(--panel); padding: 25px; border: 1px solid #333; border-radius: 8px; box-shadow: 0 0 15px rgba(255, 51, 51, 0.2); }
+        h1 { color: var(--accent); text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .tool-section { background: #111; padding: 15px; margin-top: 15px; border-left: 3px solid var(--accent); border-radius: 4px; }
+        .input-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+        input[type="number"], input[type="text"], input[type="file"] { background: #222; color: #fff; border: 1px solid #444; padding: 8px; border-radius: 4px; font-family: monospace; }
+        button { background: var(--accent); color: #000; font-weight: bold; font-family: monospace; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: #cc0000; color: white; }
+        button:disabled { background: #333; color: #666; cursor: not-allowed; }
+        #status { color: #00ff00; font-weight: bold; margin-top: 10px; }
+        iframe { width: 100%; height: 600px; margin-top: 20px; background: #fff; border: none; border-radius: 4px; }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>PDF TEXT REPLACER (MASKING BYPASS)</h1>
+        
+        <input type="file" id="uploadPdf" accept="application/pdf" />
+        <p id="status">Status: Waiting for PDF...</p>
 
-<div class="header">
-    <div class="logo">
-        <span>ASUR</span> PDF TEXT EDITOR
-    </div>
-    <div class="badge">DIRECT TEXT EDITING • PRO</div>
-</div>
-
-<div class="main-container">
-    
-    <!-- लेफ्ट एडिटर पैनल -->
-    <div class="editor-panel">
-        <div class="section">
-            <div class="section-title">📁 PDF FILE</div>
-            <button class="upload-btn" onclick="document.getElementById('file-input').click()">
-                📄 UPLOAD PDF
-            </button>
-            <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(event)">
-        </div>
-
-        <div class="section">
-            <div class="section-title">📝 TEXT ELEMENTS</div>
-            <button class="btn btn-secondary" onclick="extractAllText()" style="width: 100%; margin-bottom: 10px;">
-                🔍 EXTRACT ALL TEXT
-            </button>
-            <div class="text-list" id="text-list">
-                <!-- टेक्स्ट लिस्ट यहां दिखेगी -->
-                <div style="color: #8b949e; text-align: center; padding: 20px;">
-                    PDF अपलोड करें और "EXTRACT ALL TEXT" पर क्लिक करें
-                </div>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">✏️ EDIT TEXT</div>
-            <div class="edit-area">
-                <label style="color: #8b949e; font-size: 12px;">SELECTED TEXT:</label>
-                <textarea id="edit-textarea" placeholder="कोई टेक्स्ट सेलेक्ट नहीं है..."></textarea>
-                
-                <label style="color: #8b949e; font-size: 12px;">FONT SIZE:</label>
-                <div class="slider-container">
-                    <input type="range" id="font-size-slider" min="6" max="72" value="16">
-                    <span id="font-size-value" style="color: #e94560;">16</span>px
-                </div>
-
-                <label style="color: #8b949e; font-size: 12px;">TEXT COLOR:</label>
-                <input type="color" id="text-color" class="color-input" value="#000000">
-
-                <label style="color: #8b949e; font-size: 12px;">FONT:</label>
-                <select id="font-select">
-                    <option value="Arial">Arial</option>
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Courier New">Courier New</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Impact">Impact</option>
-                </select>
-
-                <div class="btn-group">
-                    <button class="btn btn-primary" onclick="updateSelectedText()">UPDATE</button>
-                    <button class="btn btn-secondary" onclick="addNewText()">ADD NEW</button>
-                </div>
-                <button class="btn btn-secondary" onclick="deleteSelectedText()" style="margin-top: 8px; width: 100%;">
-                    🗑️ DELETE SELECTED
-                </button>
-            </div>
-        </div>
-
-        <div class="section">
-            <div class="section-title">🎨 STYLE OPTIONS</div>
-            <div class="btn-group" style="margin-bottom: 10px;">
-                <button class="btn btn-secondary" onclick="applyBold()"><b>B</b></button>
-                <button class="btn btn-secondary" onclick="applyItalic()"><i>I</i></button>
-                <button class="btn btn-secondary" onclick="applyUnderline()"><u>U</u></button>
-            </div>
-            <button class="btn btn-secondary" onclick="clearAllText()" style="width: 100%;">
-                CLEAR ALL TEXT
-            </button>
-        </div>
-    </div>
-
-    <!-- राइट कैनवास एरिया -->
-    <div class="canvas-area">
-        <div class="toolbar">
-            <button class="tool-btn active" id="tool-select" onclick="setTool('select')">🖱️ SELECT</button>
-            <button class="tool-btn" id="tool-move" onclick="setTool('move')">✋ MOVE</button>
+        <div class="tool-section">
+            <h3>Mask & Replace Text (Page 1)</h3>
+            <p style="font-size: 12px; color: #aaa;">Enter coordinates to place a white box over old text, and write new text over it. PDF origin (0,0) is bottom-left corner.</p>
             
-            <div class="page-controls">
-                <button class="tool-btn" onclick="previousPage()">◀ PREV</button>
-                <span class="page-info">
-                    <span id="current-page">1</span> / <span id="total-pages">1</span>
-                </span>
-                <button class="tool-btn" onclick="nextPage()">NEXT ▶</button>
-                <button class="tool-btn" onclick="zoomIn()">🔍+</button>
-                <button class="tool-btn" onclick="zoomOut()">🔍-</button>
+            <div class="input-group">
+                <input type="number" id="posX" placeholder="X Coord (e.g. 50)" value="50">
+                <input type="number" id="posY" placeholder="Y Coord (e.g. 700)" value="700">
+                <input type="number" id="boxW" placeholder="Box Width (e.g. 200)" value="200">
+                <input type="number" id="boxH" placeholder="Box Height (e.g. 20)" value="20">
+            </div>
+            <div class="input-group">
+                <input type="text" id="newText" placeholder="Enter New Text Here" style="flex: 1;" value="UPDATED TEXT DATA">
+                <input type="number" id="fontSize" placeholder="Font Size" value="12" style="width: 80px;">
+                <button id="btnReplace" onclick="maskAndReplace()" disabled>Execute Replace</button>
             </div>
         </div>
 
-        <div class="canvas-wrapper">
-            <div class="canvas-container" id="canvas-container">
-                <canvas id="pdf-canvas"></canvas>
-                <canvas id="text-canvas"></canvas>
-            </div>
-        </div>
+        <button id="btnDownload" onclick="downloadPdf()" disabled style="width: 100%; margin-top: 15px; background: #00cc66;">DOWNLOAD EDITED PDF</button>
 
-        <div class="action-bar">
-            <button class="btn btn-secondary" onclick="exportPDF()">💾 PREVIEW EXPORT</button>
-            <button class="btn btn-primary" onclick="downloadPDF()">⬇️ DOWNLOAD PDF</button>
-        </div>
+        <iframe id="pdfViewer"></iframe>
     </div>
-</div>
 
-<div class="loading" id="loading">
-    <div class="spinner"></div>
-</div>
+    <script>
+        let currentPdfBytes = null;
+        const { PDFDocument, rgb } = PDFLib;
 
-<script>
-    // ================================================================
-    // ASUR PDF TEXT EDITOR - DIRECT TEXT MANIPULATION
-    // ================================================================
-
-    let pdfDoc = null;
-    let currentPage = 1;
-    let totalPages = 1;
-    let scale = 1.5;
-    let fabricCanvas = null;
-    let textItems = [];
-    let currentTool = 'select';
-    let selectedTextId = null;
-
-    // Fabric.js इनिशियलाइज़ेशन
-    function initFabricCanvas(width, height) {
-        const canvasElement = document.getElementById('text-canvas');
-        
-        if (fabricCanvas) {
-            fabricCanvas.dispose();
-        }
-        
-        fabricCanvas = new fabric.Canvas('text-canvas', {
-            selection: true,
-            preserveObjectStacking: true,
-            width: width,
-            height: height
+        // 1. Load PDF
+        document.getElementById('uploadPdf').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('status').innerText = 'Status: Loading PDF to memory...';
+                currentPdfBytes = await file.arrayBuffer();
+                document.getElementById('btnReplace').disabled = false;
+                document.getElementById('btnDownload').disabled = false;
+                document.getElementById('status').innerText = 'Status: Ready for execution.';
+                displayPdf(currentPdfBytes);
+            }
         });
 
-        fabricCanvas.on('selection:created', onTextSelected);
-        fabricCanvas.on('selection:updated', onTextSelected);
-        fabricCanvas.on('selection:cleared', onSelectionCleared);
-        fabricCanvas.on('object:modified', onObjectModified);
-    }
-
-    // PDF लोड करना
-    async function loadPDF(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        showLoading();
-        
-        const fileReader = new FileReader();
-        fileReader.onload = async function(e) {
-            const typedArray = new Uint8Array(e.target.result);
-            
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            
+        // 2. The Bypass: Mask old text with white box and write new text
+        async function maskAndReplace() {
+            if (!currentPdfBytes) return;
             try {
-                pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
-                totalPages = pdfDoc.numPages;
-                document.getElementById('total-pages').textContent = totalPages;
-                currentPage = 1;
-                await renderPage(currentPage);
+                document.getElementById('status').innerText = 'Status: Applying Mask & Replace...';
                 
-                // ऑटो एक्सट्रैक्ट टेक्स्ट
-                await extractAllText();
+                const pdfDoc = await PDFDocument.load(currentPdfBytes);
+                const pages = pdfDoc.getPages();
+                const targetPage = pages[0]; // Edits Page 1
                 
-                hideLoading();
-            } catch (error) {
-                console.error('PDF Load Error:', error);
-                alert('PDF लोड करने में एरर।');
-                hideLoading();
-            }
-        };
-        
-        fileReader.readAsArrayBuffer(file);
-    }
+                // Get user inputs
+                const x = parseFloat(document.getElementById('posX').value);
+                const y = parseFloat(document.getElementById('posY').value);
+                const w = parseFloat(document.getElementById('boxW').value);
+                const h = parseFloat(document.getElementById('boxH').value);
+                const text = document.getElementById('newText').value;
+                const fSize = parseFloat(document.getElementById('fontSize').value);
 
-    // PDF पेज रेंडर करना
-    async function renderPage(pageNum) {
-        if (!pdfDoc) return;
-
-        const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: scale });
-        
-        const canvas = document.getElementById('pdf-canvas');
-        const context = canvas.getContext('2d');
-        
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        
-        const renderContext = {
-            canvasContext: context,
-            viewport: viewport
-        };
-        
-        await page.render(renderContext).promise;
-        
-        document.getElementById('canvas-container').style.width = viewport.width + 'px';
-        document.getElementById('canvas-container').style.height = viewport.height + 'px';
-        
-        initFabricCanvas(viewport.width, viewport.height);
-        
-        document.getElementById('current-page').textContent = pageNum;
-        
-        // पेज के टेक्स्ट आइटम्स लोड करें
-        loadPageTextItems();
-    }
-
-    // PDF से टेक्स्ट एक्सट्रैक्ट करना
-    async function extractAllText() {
-        if (!pdfDoc) {
-            alert('पहले PDF अपलोड करें।');
-            return;
-        }
-
-        showLoading();
-        textItems = [];
-        
-        try {
-            for (let i = 1; i <= totalPages; i++) {
-                const page = await pdfDoc.getPage(i);
-                const textContent = await page.getTextContent();
-                const viewport = page.getViewport({ scale: scale });
-                
-                textContent.items.forEach((item, index) => {
-                    if (item.str && item.str.trim().length > 0) {
-                        const transform = item.transform;
-                        const x = transform[4] * scale;
-                        const y = viewport.height - (transform[5] * scale);
-                        const fontSize = Math.abs(transform[3]) * scale;
-                        
-                        textItems.push({
-                            id: `text-${i}-${index}-${Date.now()}`,
-                            page: i,
-                            text: item.str,
-                            x: x,
-                            y: y - fontSize,
-                            fontSize: fontSize,
-                            fontFamily: item.fontName || 'Arial',
-                            color: '#000000',
-                            fontWeight: 'normal',
-                            fontStyle: 'normal',
-                            underline: false
-                        });
-                    }
+                // Step A: Draw White Rectangle (The Mask)
+                targetPage.drawRectangle({
+                    x: x,
+                    y: y,
+                    width: w,
+                    height: h,
+                    color: rgb(1, 1, 1), // White color
                 });
-            }
-            
-            updateTextList();
-            loadPageTextItems();
-            
-            hideLoading();
-        } catch (error) {
-            console.error('Extract Error:', error);
-            hideLoading();
-        }
-    }
 
-    // करंट पेज के टेक्स्ट आइटम्स कैनवास पर लोड करें
-    function loadPageTextItems() {
-        if (!fabricCanvas) return;
-        
-        fabricCanvas.clear();
-        
-        const pageItems = textItems.filter(item => item.page === currentPage);
-        
-        pageItems.forEach(item => {
-            const textObj = new fabric.Text(item.text, {
-                left: item.x,
-                top: item.y,
-                fontSize: item.fontSize,
-                fontFamily: item.fontFamily,
-                fill: item.color,
-                fontWeight: item.fontWeight,
-                fontStyle: item.fontStyle,
-                underline: item.underline,
-                id: item.id
-            });
-            
-            fabricCanvas.add(textObj);
-        });
-        
-        fabricCanvas.renderAll();
-    }
+                // Step B: Draw New Text over the Mask
+                targetPage.drawText(text, {
+                    x: x + 2, // Slight padding from left edge of box
+                    y: y + 5, // Slight padding from bottom edge of box
+                    size: fSize,
+                    color: rgb(0, 0, 0), // Black text
+                });
 
-    // टेक्स्ट लिस्ट UI अपडेट करें
-    function updateTextList() {
-        const listContainer = document.getElementById('text-list');
-        const pageItems = textItems.filter(item => item.page === currentPage);
-        
-        if (pageItems.length === 0) {
-            listContainer.innerHTML = '<div style="color: #8b949e; text-align: center; padding: 20px;">कोई टेक्स्ट नहीं मिला</div>';
-            return;
-        }
-        
-        listContainer.innerHTML = pageItems.map(item => `
-            <div class="text-item ${selectedTextId === item.id ? 'active' : ''}" onclick="selectTextById('${item.id}')">
-                <div class="text-preview">${item.text.substring(0, 30)}${item.text.length > 30 ? '...' : ''}</div>
-                <div class="text-actions">
-                    <button class="icon-btn" onclick="event.stopPropagation(); editTextById('${item.id}')">✏️</button>
-                    <button class="icon-btn" onclick="event.stopPropagation(); deleteTextById('${item.id}')">🗑️</button>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // टेक्स्ट सेलेक्शन हैंडलिंग
-    function onTextSelected(e) {
-        const selected = e.selected[0];
-        if (selected && selected.id) {
-            selectedTextId = selected.id;
-            const textItem = textItems.find(item => item.id === selected.id);
-            if (textItem) {
-                document.getElementById('edit-textarea').value = textItem.text;
-                document.getElementById('font-size-slider').value = textItem.fontSize;
-                document.getElementById('font-size-value').textContent = textItem.fontSize;
-                document.getElementById('text-color').value = textItem.color;
-            }
-            updateTextList();
-        }
-    }
-
-    function onSelectionCleared() {
-        selectedTextId = null;
-        document.getElementById('edit-textarea').value = '';
-        updateTextList();
-    }
-
-    function onObjectModified(e) {
-        const obj = e.target;
-        if (obj && obj.id) {
-            const textItem = textItems.find(item => item.id === obj.id);
-            if (textItem) {
-                textItem.x = obj.left;
-                textItem.y = obj.top;
-                textItem.text = obj.text;
-                textItem.fontSize = obj.fontSize;
-                textItem.color = obj.fill;
+                // Save and Display
+                currentPdfBytes = await pdfDoc.save();
+                document.getElementById('status').innerText = 'Status: Text replaced successfully. Adjust X,Y if alignment is off.';
+                displayPdf(currentPdfBytes);
+            } catch (err) {
+                document.getElementById('status').innerText = 'Error: ' + err.message;
             }
         }
-    }
 
-    // टेक्स्ट सेलेक्ट करें ID से
-    function selectTextById(id) {
-        selectedTextId = id;
-        
-        fabricCanvas.getObjects().forEach(obj => {
-            if (obj.id === id) {
-                fabricCanvas.setActiveObject(obj);
-                obj.setCoords();
-            }
-        });
-        
-        const textItem = textItems.find(item => item.id === id);
-        if (textItem) {
-            document.getElementById('edit-textarea').value = textItem.text;
-            document.getElementById('font-size-slider').value = textItem.fontSize;
-            document.getElementById('font-size-value').textContent = textItem.fontSize;
-            document.getElementById('text-color').value = textItem.color;
+        // 3. Download
+        function downloadPdf() {
+            if (!currentPdfBytes) return;
+            const blob = new Blob([currentPdfBytes], { type: "application/pdf" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = "Edited_Document.pdf";
+            link.click();
+            document.getElementById('status').innerText = 'Status: File Downloaded.';
         }
-        
-        updateTextList();
-        fabricCanvas.renderAll();
-    }
 
-    // सेलेक्टेड टेक्स्ट अपडेट करें
-    function updateSelectedText() {
-        if (!selectedTextId) {
-            alert('पहले कोई टेक्स्ट सेलेक्ट करें।');
-            return;
+        // 4. Live Preview
+        function displayPdf(pdfBytes) {
+            const blob = new Blob([pdfBytes], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+            document.getElementById('pdfViewer').src = url;
         }
-        
-        const newText = document.getElementById('edit-textarea').value;
-        const newFontSize = parseInt(document.getElementById('font-size-slider').value);
-        const newColor = document.getElementById('text-color').value;
-        const newFont = document.getElementById('font-select').value;
-        
-        const textItem = textItems.find(item => item.id === selectedTextId);
-        if (textItem) {
-            textItem.text = newText;
-            textItem.fontSize = newFontSize;
-            textItem.color = newColor;
-            textItem.fontFamily = newFont;
-        }
-        
-        const activeObj = fabricCanvas.getActiveObject();
-        if (activeObj) {
-            activeObj.set({
-                text: newText,
-                fontSize: newFontSize,
-                fill: newColor,
-                fontFamily: newFont
-            });
-            fabricCanvas.renderAll();
-        }
-        
-        updateTextList();
-    }
-
-    // नया टेक्स्ट जोड़ें
-    function addNewText() {
-        const newId = `text-new-${Date.now()}`;
-        const newText = document.getElementById('edit-textarea').value || 'New Text';
-        const fontSize = parseInt(document.getElementById('font-size-slider').value);
-        const color = document.getElementById('text-color').value;
-        const font = document.getElementById('font-select').value;
-        
-        const canvasCenter = fabricCanvas.getCenter();
-        
-        const textItem = {
-            id: newId,
-            page: currentPage,
-            text: newText,
-            x: canvasCenter.left,
-            y: canvasCenter.top,
-            fontSize: fontSize,
-            fontFamily: font,
-            color: color,
-            fontWeight: 'normal',
-            fontStyle: 'normal',
-            underline: false
-        };
-        
-        textItems.push(textItem);
-        
-        const textObj = new fabric.Text(newText, {
-            left: canvasCenter.left,
-            top: canvasCenter.top,
-            fontSize: fontSize,
-            fontFamily: font,
-            fill: color,
-            id: newId
-        });
-        
-        fabricCanvas.add(textObj);
-        fabricCanvas.setActiveObject(textObj);
-        fabricCanvas.renderAll();
-        
-        selectedTextId = newId;
-        updateTextList();
-    }
-
-    // टेक्स्ट डिलीट करें
-    function deleteSelectedText() {
-        if (!selectedTextId) {
-            alert('पहले कोई टेक्स्ट सेलेक्ट करें।');
-            return;
-        }
-        
-        deleteTextById(selectedTextId);
-    }
-
-    function deleteTextById(id) {
-        textItems = textItems.filter(item => item.id !== id);
-        
-        fabricCanvas.getObjects().forEach(obj => {
-            if (obj.id === id) {
-                fabricCanvas.remove(obj);
-            }
-        });
-        
-        fabricCanvas.renderAll();
-        selectedTextId = null;
-        document.getElementById('edit-textarea').value = '';
-        updateTextList();
-    }
-
-    function editTextById(id) {
-        selectTextById(id);
-    }
-
-    // स्टाइल फंक्शन्स
-    function applyBold() {
-        const activeObj = fabricCanvas.getActiveObject();
-        if (activeObj && activeObj.type === 'text') {
-            const newWeight = activeObj.fontWeight === 'bold' ? 'normal' : 'bold';
-            activeObj.set('fontWeight', newWeight);
-            
-            const textItem = textItems.find(item => item.id === activeObj.id);
-            if (textItem) textItem.fontWeight = newWeight;
-            
-            fabricCanvas.renderAll();
-        }
-    }
-
-    function applyItalic() {
-        const activeObj = fabricCanvas.getActiveObject();
-        if (activeObj && activeObj.type === 'text') {
-            const newStyle = activeObj.fontStyle === 'italic' ? 'normal' : 'italic';
-            activeObj.set('fontStyle', newStyle);
-            
-            const textItem = textItems.find(item => item.id === activeObj.id);
-            if (textItem) textItem.fontStyle = newStyle;
-            
-            fabricCanvas.renderAll();
-        }
-    }
-
-    function applyUnderline() {
-        const activeObj = fabricCanvas.getActiveObject();
-        if (activeObj && activeObj.type === 'text') {
-            activeObj.set('underline', !activeObj.underline);
-            
-            const textItem = textItems.find(item => item.id === activeObj.id);
-            if (textItem) textItem.underline = !textItem.underline;
-            
-            fabricCanvas.renderAll();
-        }
-    }
-
-    function clearAllText() {
-        if (confirm('इस पेज का सारा टेक्स्ट डिलीट करें?')) {
-            textItems = textItems.filter(item => item.page !== currentPage);
-            fabricCanvas.clear();
-            selectedTextId = null;
-            updateTextList();
-        }
-    }
-
-    // टूल सेटिंग
-    function setTool(tool) {
-        currentTool = tool;
-        
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.getElementById(`tool-${tool}`).classList.add('active');
-        
-        if (tool === 'select') {
-            fabricCanvas.selection = true;
-            fabricCanvas.forEachObject(obj => obj.set('selectable', true));
-        } else if (tool === 'move') {
-            fabricCanvas.selection = false;
-        }
-    }
-
-    // पेज नेविगेशन
-    async function previousPage() {
-        if (currentPage > 1) {
-            currentPage--;
-            await renderPage(currentPage);
-        }
-    }
-
-    async function nextPage() {
-        if (currentPage < totalPages) {
-            currentPage++;
-            await renderPage(currentPage);
-        }
-    }
-
-    function zoomIn() {
-        scale += 0.25;
-        renderPage(currentPage);
-    }
-
-    function zoomOut() {
-        if (scale > 0.5) {
-            scale -= 0.25;
-            renderPage(currentPage);
-        }
-    }
-
-    // एक्सपोर्ट
-    async function exportPDF() {
-        if (!pdfDoc) {
-            alert('पहले PDF लोड करें।');
-            return;
-        }
-        
-        showLoading();
-        
-        try {
-            const { jsPDF } = window.jspdf;
-            const canvas = document.getElementById('pdf-canvas');
-            const textCanvas = document.getElementById('text-canvas');
-            
-            const combinedCanvas = document.createElement('canvas');
-            combinedCanvas.width = canvas.width;
-            combinedCanvas.height = canvas.height;
-            const ctx = combinedCanvas.getContext('2d');
-            
-            ctx.drawImage(canvas, 0, 0);
-            ctx.drawImage(textCanvas, 0, 0);
-            
-            const pdf = new jsPDF({
-                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
-                unit: 'px',
-                format: [canvas.width, canvas.height]
-            });
-            
-            pdf.addImage(combinedCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, canvas.width, canvas.height);
-            
-            pdf.save('asur_text_edited.pdf');
-            hideLoading();
-        } catch (error) {
-            console.error('Export Error:', error);
-            hideLoading();
-        }
-    }
-
-    async function downloadPDF() {
-        await exportPDF();
-    }
-
-    // UI हेल्पर्स
-    function showLoading() {
-        document.getElementById('loading').style.display = 'block';
-    }
-
-    function hideLoading() {
-        document.getElementById('loading').style.display = 'none';
-    }
-
-    // इवेंट लिसनर्स
-    document.getElementById('font-size-slider').addEventListener('input', function() {
-        document.getElementById('font-size-value').textContent = this.value;
-    });
-
-    // इनिशियलाइज़
-    window.onload = function() {
-        console.log('ASUR PDF TEXT EDITOR READY');
-    };
-
-</script>
-
+    </script>
 </body>
 </html>
