@@ -3,191 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Easy PDF Editor</title>
+    <title>PDF Text Replacer (Workaround)</title>
     <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            width: 100%;
-            max-width: 500px;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-        p.subtitle {
-            color: #777;
-            margin-bottom: 25px;
-            font-size: 14px;
-        }
-        .upload-area {
-            border: 2px dashed #007BFF;
-            padding: 30px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            background-color: #fafbfc;
-            transition: background 0.3s, border-color 0.3s;
-        }
-        .upload-area:hover {
-            background-color: #eef5ff;
-            border-color: #0056b3;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        .btn {
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            transition: background 0.3s;
-            font-weight: bold;
-        }
-        .btn:hover {
-            background-color: #0056b3;
-        }
-        #status {
-            margin-top: 15px;
-            color: #28a745;
-            font-weight: bold;
-            font-size: 14px;
-            min-height: 20px;
-        }
-        .edit-controls {
-            display: none; /* Jab tak PDF upload nahi hota, ye hide rahega */
-            margin-top: 20px;
-            text-align: left;
-        }
-        .edit-controls label {
-            font-weight: bold;
-            color: #444;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .edit-controls input[type="text"] {
-            width: calc(100% - 24px);
-            padding: 10px;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
-        }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
+        h2 { margin-top: 0; color: #333; }
+        input[type="file"], input[type="number"], input[type="text"] { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        .row { display: flex; gap: 10px; }
+        .row input { width: 45%; }
+        button { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;}
+        button:hover { background: #c82333; }
+        label { font-size: 13px; color: #666; font-weight: bold; }
+        #status { margin-top: 15px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>PDF Editor</h1>
-    <p class="subtitle">Upload, Add Text & Download</p>
+    <h2>Replace Text in PDF</h2>
+    <p style="font-size: 13px; color: #555;">(Ye tool purane text ko safed dabbe se chupa kar uske upar naya text likhta hai)</p>
     
-    <div class="upload-area" onclick="document.getElementById('pdfInput').click()">
-        📁 <strong>Click here to Upload PDF</strong>
-        <input type="file" id="pdfInput" accept="application/pdf">
+    <label>1. Upload PDF:</label>
+    <input type="file" id="pdfInput" accept="application/pdf">
+
+    <label>2. Set Position & Box Size (X, Y, Width, Height):</label>
+    <div class="row">
+        <input type="number" id="posX" placeholder="X Position (e.g. 100)">
+        <input type="number" id="posY" placeholder="Y Position (e.g. 500)">
+    </div>
+    <div class="row">
+        <input type="number" id="boxW" placeholder="Box Width (e.g. 150)">
+        <input type="number" id="boxH" placeholder="Box Height (e.g. 20)">
     </div>
 
-    <div class="edit-controls" id="editControls">
-        <label for="textToAdd">Add Text to First Page:</label>
-        <input type="text" id="textToAdd" placeholder="Type something to write on PDF...">
-        <button class="btn" id="editBtn">Apply Changes & Download</button>
-    </div>
+    <label>3. Naya Text Likhien:</label>
+    <input type="text" id="newText" placeholder="Purane text ki jagah kya likhna hai?">
 
-    <p id="status"></p>
+    <button id="replaceBtn">Replace & Download</button>
+    <div id="status"></div>
 </div>
 
 <script>
-    let uploadedPdfBytes = null;
-    let originalFileName = "document";
+    let pdfBytesOriginal = null;
+    let fileName = "edited_file.pdf";
 
-    // 1. Handle File Upload
-    document.getElementById('pdfInput').addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-        if (file && file.type === 'application/pdf') {
-            originalFileName = file.name.replace('.pdf', '');
-            document.getElementById('status').style.color = '#555';
-            document.getElementById('status').innerText = `File selected: ${file.name}`;
-            
-            // Convert file to ArrayBuffer
-            const arrayBuffer = await file.arrayBuffer();
-            uploadedPdfBytes = new Uint8Array(arrayBuffer);
-            
-            // Show edit options
-            document.getElementById('editControls').style.display = 'block';
-        } else {
-            alert('Please upload a valid PDF file.');
+    document.getElementById('pdfInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            fileName = file.name.replace('.pdf', '') + "_replaced.pdf";
+            const buffer = await file.arrayBuffer();
+            pdfBytesOriginal = new Uint8Array(buffer);
+            document.getElementById('status').innerText = "PDF Loaded!";
+            document.getElementById('status').style.color = "blue";
         }
     });
 
-    // 2. Handle Editing and Downloading
-    document.getElementById('editBtn').addEventListener('click', async () => {
-        if (!uploadedPdfBytes) return;
+    document.getElementById('replaceBtn').addEventListener('click', async () => {
+        if (!pdfBytesOriginal) {
+            alert("Pehle PDF upload karein!"); return;
+        }
 
-        const text = document.getElementById('textToAdd').value;
-        if (!text) {
-            alert('Please enter some text to add before downloading.');
-            return;
+        const x = parseFloat(document.getElementById('posX').value);
+        const y = parseFloat(document.getElementById('posY').value);
+        const w = parseFloat(document.getElementById('boxW').value);
+        const h = parseFloat(document.getElementById('boxH').value);
+        const text = document.getElementById('newText').value;
+
+        if (!x || !y || !w || !h || !text) {
+            alert("Kripya sabhi X, Y, Width, Height aur Naya Text bharein."); return;
         }
 
         try {
-            document.getElementById('status').style.color = '#007BFF';
-            document.getElementById('status').innerText = 'Processing PDF...';
-
-            // pdf-lib library se functions nikalna
+            document.getElementById('status').innerText = "Processing...";
             const { PDFDocument, rgb } = PDFLib;
-            
-            // Uploaded PDF ko load karna
-            const pdfDoc = await PDFDocument.load(uploadedPdfBytes);
-
-            // PDF ka pehla page select karna
+            const pdfDoc = await PDFDocument.load(pdfBytesOriginal);
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
 
-            // Page par text likhna (Position x: 50, y: top se thoda niche)
-            firstPage.drawText(text, {
-                x: 50,
-                y: firstPage.getHeight() - 100,
-                size: 24,
-                color: rgb(0.8, 0.1, 0.1) // Red color me text aayega
+            // 1. Purane text ke upar Safed (White) Box draw karna
+            firstPage.drawRectangle({
+                x: x,
+                y: y,
+                width: w,
+                height: h,
+                color: rgb(1, 1, 1), // White color
             });
 
-            // Edited PDF ko wapas bytes me convert karna
-            const pdfBytes = await pdfDoc.save();
+            // 2. Usi jagah par Naya Text draw karna (Y me thoda adjust karke taaki box ke andar aaye)
+            firstPage.drawText(text, {
+                x: x + 2,
+                y: y + 4,
+                size: 12,
+                color: rgb(0, 0, 0), // Black color text
+            });
 
-            // 3. Trigger Download
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const modifiedPdfBytes = await pdfDoc.save();
+            
+            // Download process
+            const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${originalFileName}_edited.pdf`;
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
 
-            document.getElementById('status').style.color = '#28a745';
-            document.getElementById('status').innerText = 'PDF Downloaded Successfully! 🎉';
-            
+            document.getElementById('status').innerText = "Download Successful! ✅";
+            document.getElementById('status').style.color = "green";
+
         } catch (error) {
-            console.error("PDF Edit Error: ", error);
-            document.getElementById('status').style.color = 'red';
-            document.getElementById('status').innerText = 'Error while editing the PDF.';
+            console.error(error);
+            document.getElementById('status').innerText = "Error in replacing text.";
+            document.getElementById('status').style.color = "red";
         }
     });
 </script>
