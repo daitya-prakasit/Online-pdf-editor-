@@ -3,48 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Image Editor with Gemini</title>
+    <title>Movable Text Image Editor</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .toolbar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 800px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .toolbar { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 900px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;}
+        .tool-group { display: flex; align-items: center; gap: 8px; }
         input[type="file"], input[type="text"], input[type="color"], input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .api-input { flex-grow: 1; min-width: 200px; }
         button { background-color: #007bff; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #0056b3; }
-        #editor-container { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 100%; overflow: auto; background: white; touch-action: none; /* touch-action none zaroori hai mobile scrolling rokne ke liye */ }
-        canvas { display: block; cursor: crosshair; max-width: 100%; height: auto; }
-        .floating-input { position: absolute; background: transparent; border: 2px dashed #007bff; padding: 2px; outline: none; resize: none; z-index: 10; overflow: hidden; }
-        .loading-badge { position: absolute; background: #ffc107; color: black; font-size: 12px; padding: 2px 5px; border-radius: 3px; z-index: 20; top: -20px; left: 0; font-weight: bold;}
+        #canvas-wrapper { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); max-width: 100%; max-height: 80vh; overflow: auto; background: white; touch-action: none; border: 1px solid #ddd;}
+        canvas { display: block; cursor: default; max-width: 100%; height: auto; }
+        
+        /* Floating Text Box */
+        .movable-text {
+            position: absolute;
+            cursor: move;
+            border: 2px solid transparent;
+            padding: 2px;
+            user-select: none; /* Text select na ho, sirf drag ho */
+            white-space: nowrap; /* Multi-line handle karne ke liye naya logix chahiye, abhi single line hai */
+        }
+        
+        /* Selected State */
+        .movable-text.selected {
+            border: 2px dashed #007bff;
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        /* Instructions for deletion */
+        .instructions { font-size: 12px; color: #666; margin-top: -10px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <div class="toolbar">
-        <input type="password" id="geminiApiKey" class="api-input" placeholder="Paste your Gemini API Key here...">
-        <input type="file" id="uploadImg" accept="image/*">
-        <label>Color:</label>
-        <input type="color" id="textColor" value="#000000">
-        <label>Size:</label>
-        <input type="number" id="fontSize" value="24" style="width: 50px;">
-        <button id="downloadBtn" style="background-color: #28a745;">Download</button>
-    </div>
+        <div class="tool-group">
+            <input type="file" id="uploadImg" accept="image/*">
+        </div>
+        
+        <div class="tool-group">
+            <input type="text" id="newTextContent" placeholder="Naya text yahan likhein...">
+            <button id="addTextBtn" class="active-mode">🟢 Add Movable Text</button>
+        </div>
 
-    <div id="editor-container">
-        <canvas id="canvas"></canvas>
+        <div class="tool-group">
+            <label>Color:</label>
+            <input type="color" id="textColor" value="#000000">
+            <label>Size:</label>
+            <input type="number" id="fontSize" value="30" style="width: 55px;">
+        </div>
+
+        <div class="tool-group">
+            <button id="downloadBtn" style="background-color: #28a745;">Download</button>
+        </div>
     </div>
+    
+    <div class="instructions">Tip: Click text to select. Drag to move. Press 'Delete' keyboard key to remove.</div>
+
+    <div id="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+        </div>
 
 <script>
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const container = document.getElementById('editor-container');
+    const ctx = canvas.getContext('2d');
+    const wrapper = document.getElementById('canvas-wrapper');
+    const img = new Image();
+    let originalFileName = "edited_image.png";
+    let textObjects = []; // Array to store all text elements
+    let selectedTextWrapper = null; // Track selected element
     
-    let img = new Image();
-    let isDrawing = false;
-    let startX, startY, endX, endY;
-    let savedImageData = null;
-    let originalFileName = "ai_edited_image.png";
-    let activeInput = null;
-
     // 1. Image Upload
     document.getElementById('uploadImg').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -57,199 +85,206 @@
                 canvas.width = img.width;
                 canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
+                
+                // Nayi image par purane text objects clear karna (agar ho toh)
+                clearAllTexts();
             }
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
     });
 
-    // Color detection for background
-    function getAverageColor(x, y, w, h) {
-        try {
-            const imgData = ctx.getImageData(x, y, w, h).data;
-            let r=0, g=0, b=0, count=0;
-            for (let i = 0; i < imgData.length; i += 4) {
-                let px = (i / 4) % w, py = Math.floor((i / 4) / w);
-                if (px < 4 || px > w - 4 || py < 4 || py > h - 4) {
-                    r += imgData[i]; g += imgData[i+1]; b += imgData[i+2]; count++;
-                }
-            }
-            return count === 0 ? '#ffffff' : `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
-        } catch(e) { return '#ffffff'; }
-    }
-
-    // Getting Coordinates (Supports both Mouse and Mobile Touch)
-    function getCoords(e) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
-        };
-    }
-
-    function startDraw(e) {
-        if(e.touches) e.preventDefault(); // Rokne ke liye taaki mobile scroll na ho
-        commitActiveInput();
-        const pos = getCoords(e);
-        startX = pos.x; startY = pos.y;
-        isDrawing = true;
-        savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    }
-
-    function drawMove(e) {
-        if (!isDrawing) return;
-        if(e.touches) e.preventDefault();
-        const pos = getCoords(e);
-        ctx.putImageData(savedImageData, 0, 0);
-        ctx.strokeStyle = '#007bff'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
-        ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
-    }
-
-    async function endDraw(e) {
-        if (!isDrawing) return;
-        isDrawing = false;
-        const pos = e.changedTouches ? getCoords({touches: e.changedTouches}) : getCoords(e);
-        endX = pos.x; endY = pos.y;
-
-        let x = Math.min(startX, endX), y = Math.min(startY, endY);
-        let w = Math.abs(endX - startX), h = Math.abs(endY - startY);
-
-        if (w < 15 || h < 15) { ctx.putImageData(savedImageData, 0, 0); return; }
-
-        ctx.putImageData(savedImageData, 0, 0); // Dashed line hatao
+    // 2. Add New Movable Text
+    document.getElementById('addTextBtn').addEventListener('click', function() {
+        if(!img.src) { alert("Pehle Image upload karein!"); return; }
         
-        // --- GEMINI API KE LIYE IMAGE CROP KARNA ---
-        const croppedImgData = ctx.getImageData(x, y, w, h);
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = w; tempCanvas.height = h;
-        tempCanvas.getContext('2d').putImageData(croppedImgData, 0, 0);
-        const base64Image = tempCanvas.toDataURL('image/jpeg').split(',')[1];
+        const content = document.getElementById('newTextContent').value;
+        if (!content.trim()) { alert("Kripya text box me kuch likhein!"); return; }
 
-        // Background color bhar do (Purana text hide)
-        ctx.fillStyle = getAverageColor(x, y, w, h);
-        ctx.fillRect(x, y, w, h);
-
-        // Text input banao
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
-        createTextInput(x, y, w, h, scaleX, scaleY);
-
-        // Gemini AI Call
-        const apiKey = document.getElementById('geminiApiKey').value;
-        if (apiKey) {
-            fetchGeminiText(apiKey, base64Image, activeInput);
-        }
-    }
-
-    // Events Attach Karna (Mouse + Mobile Touch)
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('mousemove', drawMove);
-    canvas.addEventListener('mouseup', endDraw);
-    canvas.addEventListener('touchstart', startDraw, {passive: false});
-    canvas.addEventListener('touchmove', drawMove, {passive: false});
-    canvas.addEventListener('touchend', endDraw);
-
-    function createTextInput(x, y, w, h, scaleX, scaleY) {
-        const wrapper = document.createElement('div');
-        wrapper.style.position = 'absolute';
-        wrapper.style.left = (x / scaleX) + 'px';
-        wrapper.style.top = (y / scaleY) + 'px';
-
-        const badge = document.createElement('div');
-        badge.className = 'loading-badge';
-        badge.innerText = 'AI Ready';
-        badge.id = 'ai-badge';
-
-        const input = document.createElement('textarea');
-        input.className = 'floating-input';
-        input.style.width = (w / scaleX) + 'px';
-        input.style.height = (h / scaleY) + 'px';
-        
         const fontSize = document.getElementById('fontSize').value;
-        input.style.fontSize = (fontSize / scaleY) + 'px'; 
-        input.style.color = document.getElementById('textColor').value;
+        const color = document.getElementById('textColor').value;
         
-        input.dataset.cx = x; input.dataset.cy = y;
-
-        wrapper.appendChild(badge);
-        wrapper.appendChild(input);
-        container.appendChild(wrapper);
+        // Default position image ke beech me (canvas coordinates)
+        const canvasX = canvas.width / 4;
+        const canvasY = canvas.height / 2;
         
-        input.focus();
-        activeInput = input;
-        wrapper.activeWrapper = true;
+        createTextElement(content, canvasX, canvasY, fontSize, color);
+        document.getElementById('newTextContent').value = ''; // Reset input
+    });
+
+    // 3. Create & Manage Movable HTML Elements over Canvas
+    function createTextElement(content, x, y, size, color) {
+        const textWrapper = document.createElement('div');
+        textWrapper.className = 'movable-text';
+        textWrapper.innerText = content;
+        
+        // CSS properties setting
+        textWrapper.style.fontSize = size + 'px';
+        textWrapper.style.color = color;
+        textWrapper.style.fontFamily = 'Arial, sans-serif'; // Default font
+        textWrapper.style.fontWeight = 'bold';
+        
+        // Initial position (CSS absolutely positioned)
+        // We calculate positions relative to image scale
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = rect.width / canvas.width;
+        const scaleY = rect.height / canvas.height;
+        
+        textWrapper.style.left = (x * scaleX) + 'px';
+        textWrapper.style.top = (y * scaleY) + 'px';
+        
+        // Store underlying data
+        textWrapper.dataset.origX = x;
+        textWrapper.dataset.origY = y;
+        textWrapper.dataset.size = size;
+        textWrapper.dataset.color = color;
+
+        // --- Drag & Selection Logic ---
+        setupDragging(textWrapper);
+        textWrapper.addEventListener('click', (e) => selectText(textWrapper, e));
+
+        wrapper.appendChild(textWrapper);
+        selectText(textWrapper); // Select immediately upon creation
     }
+    
+    function setupDragging(el) {
+        let isDragging = false;
+        let startX, startY;
 
-    // Gemini API Fetch Function
-    async function fetchGeminiText(apiKey, base64Image, inputElement) {
-        const badge = document.getElementById('ai-badge');
-        badge.innerText = '🤖 Reading...';
-        badge.style.background = '#17a2b8'; badge.style.color = 'white';
+        function onMouseDown(e) {
+            isDragging = true;
+            selectText(el, e); // Selection handles z-index, so it brings it to front
 
-        try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: "Read the text in this image. Return strictly ONLY the text you see. No markdown, no quotes, no explanations." },
-                            { inline_data: { mime_type: "image/jpeg", data: base64Image } }
-                        ]
-                    }]
-                })
-            });
-            const data = await response.json();
-            if (data.candidates && data.candidates[0].content.parts[0].text) {
-                inputElement.value = data.candidates[0].content.parts[0].text.trim();
-                badge.innerText = '✅ Done';
-                badge.style.background = '#28a745';
-            }
-        } catch (error) {
-            badge.innerText = '❌ Failed';
-            badge.style.background = '#dc3545';
-        }
-        setTimeout(() => { if(badge) badge.style.display = 'none'; }, 2000);
-    }
-
-    function commitActiveInput() {
-        if (!activeInput) return;
-        const text = activeInput.value;
-        if (text.trim() !== '') {
-            const cx = parseFloat(activeInput.dataset.cx), cy = parseFloat(activeInput.dataset.cy);
-            const fontSize = document.getElementById('fontSize').value;
-            ctx.font = `${fontSize}px Arial`;
-            ctx.fillStyle = document.getElementById('textColor').value;
-            ctx.textBaseline = 'top';
+            const rect = wrapper.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             
-            const lines = text.split('\n');
-            let currentY = cy + 2; 
-            for(let i=0; i<lines.length; i++) {
-                ctx.fillText(lines[i], cx + 2, currentY);
-                currentY += parseInt(fontSize) + 2;
-            }
+            // Mouse relative offset inside element
+            startX = clientX - el.offsetLeft - rect.left;
+            startY = clientY - el.offsetTop - rect.top;
+            e.stopPropagation();
         }
-        const wrapper = activeInput.parentNode;
-        if (wrapper && wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
-        activeInput = null;
-    }
 
-    // Click outside to save text
-    document.addEventListener('click', function(e) {
-        if (activeInput && e.target !== activeInput && e.target.tagName !== 'CANVAS') {
-            commitActiveInput();
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+
+            const rect = wrapper.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Nayi position calculate karna
+            let newX = clientX - rect.left - startX;
+            let newY = clientY - rect.top - startY;
+
+            // Apply positions (HTML pixels)
+            el.style.left = newX + 'px';
+            el.style.top = newY + 'px';
+            
+            // Wapas original image coordinates update karna storage ke liye
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            el.dataset.origX = newX * scaleX;
+            el.dataset.origY = newY * scaleY;
+        }
+
+        function onMouseUp() { isDragging = false; }
+
+        el.addEventListener('mousedown', onMouseDown);
+        el.addEventListener('touchstart', onMouseDown, {passive: false});
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('touchmove', onMouseMove, {passive: false});
+        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('touchend', onMouseUp);
+    }
+    
+    function selectText(el, event) {
+        if(event) event.stopPropagation();
+        
+        // Deselect previous
+        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
+        
+        // Select new
+        selectedTextWrapper = el;
+        selectedTextWrapper.classList.add('selected');
+        
+        // Update toolbar values to match selected
+        document.getElementById('fontSize').value = selectedTextWrapper.dataset.size;
+        // Color input doesn't update easily due to different format issues, keep current.
+    }
+    
+    // Clear selection click anywhere else
+    wrapper.addEventListener('click', () => {
+        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
+        selectedTextWrapper = null;
+    });
+
+    // Handle Deletion via Keyboard 'Delete' key
+    document.addEventListener('keydown', function(e) {
+        if (selectedTextWrapper && (e.key === 'Delete' || e.key === 'Backspace')) {
+            wrapper.removeChild(selectedTextWrapper);
+            selectedTextWrapper = null;
         }
     });
 
+    // Toolbar updates selected text color/size
+    document.getElementById('textColor').addEventListener('input', function() {
+        if(selectedTextWrapper) {
+            selectedTextWrapper.style.color = this.value;
+            selectedTextWrapper.dataset.color = this.value;
+        }
+    });
+    
+    document.getElementById('fontSize').addEventListener('input', function() {
+        if(selectedTextWrapper) {
+            selectedTextWrapper.style.fontSize = this.value + 'px';
+            selectedTextWrapper.dataset.size = this.value;
+        }
+    });
+
+    function clearAllTexts() {
+        const texts = wrapper.querySelectorAll('.movable-text');
+        texts.forEach(text => wrapper.removeChild(text));
+        selectedTextWrapper = null;
+    }
+
+    // 4. DOWNLOAD: Combine Image + Floating Text Objects onto Canvas
     document.getElementById('downloadBtn').addEventListener('click', function() {
-        commitActiveInput(); 
+        if(!img.src) { alert("Pehle Image upload karein!"); return; }
+        
+        // Deselect current if any
+        if(selectedTextWrapper) selectedTextWrapper.classList.remove('selected');
+
+        // Create a temporary final canvas
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = canvas.width;
+        finalCanvas.height = canvas.height;
+        const finalCtx = finalCanvas.getContext('2d');
+        
+        // Draw original image first
+        finalCtx.drawImage(img, 0, 0);
+        
+        // Draw all floating text elements at their stored positions
+        const floatingTexts = wrapper.querySelectorAll('.movable-text');
+        floatingTexts.forEach(textWrapper => {
+            const x = parseFloat(textWrapper.dataset.origX);
+            const y = parseFloat(textWrapper.dataset.origY);
+            const size = parseInt(textWrapper.dataset.size);
+            const color = textWrapper.dataset.color;
+            const textContent = textWrapper.innerText;
+
+            finalCtx.font = `bold ${size}px Arial, sans-serif`;
+            finalCtx.fillStyle = color;
+            finalCtx.textBaseline = 'top'; // Matches HTML rendering logic
+            
+            // Draw on actual image pixels
+            finalCtx.fillText(textContent, x, y);
+        });
+
+        // Generate download link
         const link = document.createElement('a');
         link.download = originalFileName;
-        link.href = canvas.toDataURL("image/png");
+        link.href = finalCanvas.toDataURL("image/png");
         link.click();
     });
 </script>
