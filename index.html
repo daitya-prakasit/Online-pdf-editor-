@@ -3,121 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Text Replacer (Workaround)</title>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <title>AI-Style Image Text Editor</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
-        h2 { margin-top: 0; color: #333; }
-        input[type="file"], input[type="number"], input[type="text"] { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
-        .row { display: flex; gap: 10px; }
-        .row input { width: 45%; }
-        button { background: #dc3545; color: white; border: none; padding: 12px; width: 100%; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px;}
-        button:hover { background: #c82333; }
-        label { font-size: 13px; color: #666; font-weight: bold; }
-        #status { margin-top: 15px; font-weight: bold; text-align: center; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: #333; margin: 0 0 10px 0; }
+        .header p { color: #666; margin: 0; font-size: 15px; }
+        
+        .toolbar {
+            background: white; padding: 15px 25px;
+            border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background-color: #007bff; color: white; border: none;
+            padding: 10px 15px; border-radius: 5px; cursor: pointer;
+            font-weight: bold; transition: 0.2s;
+        }
+        .btn:hover { background-color: #0056b3; }
+        .btn-success { background-color: #28a745; }
+        .btn-success:hover { background-color: #218838; }
+        
+        input[type="file"], input[type="color"], input[type="number"] {
+            padding: 5px; border: 1px solid #ccc; border-radius: 5px;
+        }
+        
+        #editor-container {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            background: white;
+            max-width: 100%;
+            overflow: auto;
+        }
+        canvas {
+            display: block;
+            cursor: crosshair;
+            max-width: 1000px;
+        }
+        .floating-input {
+            position: absolute;
+            background: transparent;
+            border: 1px dashed #007bff;
+            padding: 2px; margin: 0;
+            outline: none;
+            font-family: Arial, sans-serif;
+            resize: none;
+            overflow: hidden;
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Replace Text in PDF</h2>
-    <p style="font-size: 13px; color: #555;">(Ye tool purane text ko safed dabbe se chupa kar uske upar naya text likhta hai)</p>
-    
-    <label>1. Upload PDF:</label>
-    <input type="file" id="pdfInput" accept="application/pdf">
-
-    <label>2. Set Position & Box Size (X, Y, Width, Height):</label>
-    <div class="row">
-        <input type="number" id="posX" placeholder="X Position (e.g. 100)">
-        <input type="number" id="posY" placeholder="Y Position (e.g. 500)">
-    </div>
-    <div class="row">
-        <input type="number" id="boxW" placeholder="Box Width (e.g. 150)">
-        <input type="number" id="boxH" placeholder="Box Height (e.g. 20)">
+    <div class="header">
+        <h1>Smart Text Replacer</h1>
+        <p>1. Upload Image &nbsp;|&nbsp; 2. Mouse se purane text par ek Box banaye &nbsp;|&nbsp; 3. Naya text type karein</p>
     </div>
 
-    <label>3. Naya Text Likhien:</label>
-    <input type="text" id="newText" placeholder="Purane text ki jagah kya likhna hai?">
+    <div class="toolbar">
+        <div>
+            <label>Upload Image:</label>
+            <input type="file" id="uploadImg" accept="image/png, image/jpeg, image/webp">
+        </div>
+        <div>
+            <label>Text Color:</label>
+            <input type="color" id="textColor" value="#000000">
+        </div>
+        <div>
+            <label>Font Size:</label>
+            <input type="number" id="fontSize" value="20" style="width: 60px;">
+        </div>
+        <button class="btn btn-success" id="downloadBtn">Download Image</button>
+    </div>
 
-    <button id="replaceBtn">Replace & Download</button>
-    <div id="status"></div>
-</div>
+    <div id="editor-container">
+        <canvas id="canvas"></canvas>
+    </div>
 
 <script>
-    let pdfBytesOriginal = null;
-    let fileName = "edited_file.pdf";
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const container = document.getElementById('editor-container');
+    
+    let img = new Image();
+    let isDrawing = false;
+    let startX, startY, endX, endY;
+    let savedImageData = null;
+    let fileName = "edited_image.png";
 
-    document.getElementById('pdfInput').addEventListener('change', async (e) => {
+    // Image Upload Function
+    document.getElementById('uploadImg').addEventListener('change', function(e) {
         const file = e.target.files[0];
-        if (file) {
-            fileName = file.name.replace('.pdf', '') + "_replaced.pdf";
-            const buffer = await file.arrayBuffer();
-            pdfBytesOriginal = new Uint8Array(buffer);
-            document.getElementById('status').innerText = "PDF Loaded!";
-            document.getElementById('status').style.color = "blue";
+        if (!file) return;
+        fileName = file.name.split('.')[0] + "_edited.png";
+        
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            }
+            img.src = event.target.result;
         }
+        reader.readAsDataURL(file);
     });
 
-    document.getElementById('replaceBtn').addEventListener('click', async () => {
-        if (!pdfBytesOriginal) {
-            alert("Pehle PDF upload karein!"); return;
-        }
-
-        const x = parseFloat(document.getElementById('posX').value);
-        const y = parseFloat(document.getElementById('posY').value);
-        const w = parseFloat(document.getElementById('boxW').value);
-        const h = parseFloat(document.getElementById('boxH').value);
-        const text = document.getElementById('newText').value;
-
-        if (!x || !y || !w || !h || !text) {
-            alert("Kripya sabhi X, Y, Width, Height aur Naya Text bharein."); return;
-        }
-
+    // Auto-detect background color from the edges of the box
+    function getAverageEdgeColor(x, y, w, h) {
         try {
-            document.getElementById('status').innerText = "Processing...";
-            const { PDFDocument, rgb } = PDFLib;
-            const pdfDoc = await PDFDocument.load(pdfBytesOriginal);
-            const pages = pdfDoc.getPages();
-            const firstPage = pages[0];
-
-            // 1. Purane text ke upar Safed (White) Box draw karna
-            firstPage.drawRectangle({
-                x: x,
-                y: y,
-                width: w,
-                height: h,
-                color: rgb(1, 1, 1), // White color
-            });
-
-            // 2. Usi jagah par Naya Text draw karna (Y me thoda adjust karke taaki box ke andar aaye)
-            firstPage.drawText(text, {
-                x: x + 2,
-                y: y + 4,
-                size: 12,
-                color: rgb(0, 0, 0), // Black color text
-            });
-
-            const modifiedPdfBytes = await pdfDoc.save();
+            x = Math.max(0, x); y = Math.max(0, y);
+            w = Math.min(w, canvas.width - x); h = Math.min(h, canvas.height - y);
             
-            // Download process
-            const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            document.getElementById('status').innerText = "Download Successful! ✅";
-            document.getElementById('status').style.color = "green";
-
-        } catch (error) {
-            console.error(error);
-            document.getElementById('status').innerText = "Error in replacing text.";
-            document.getElementById('status').style.color = "red";
+            const imgData = ctx.getImageData(x, y, w, h).data;
+            let r=0, g=0, b=0, count=0;
+            
+            for (let i = 0; i < imgData.length; i += 4) {
+                let px = (i / 4) % w;
+                let py = Math.floor((i / 4) / w);
+                
+                // Box ke sirf bahari hisse (border) se color detect karna taaki text ka color mix na ho
+                if (px < 3 || px > w - 3 || py < 3 || py > h - 3) {
+                    r += imgData[i];
+                    g += imgData[i+1];
+                    b += imgData[i+2];
+                    count++;
+                }
+            }
+            if (count === 0) return '#ffffff';
+            return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
+        } catch(e) {
+            return '#ffffff';
         }
+    }
+
+    // Mouse Events to Draw Box
+    canvas.addEventListener('mousedown', function(e) {
+        commitActiveInput(); // Agar pehle se typing chal rahi ho toh usko image par save kar do
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        startX = (e.clientX - rect.left) * scaleX;
+        startY = (e.clientY - rect.top) * scaleY;
+        isDrawing = true;
+        savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    });
+
+    canvas.addEventListener('mousemove', function(e) {
+        if (!isDrawing) return;
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        let currentX = (e.clientX - rect.left) * scaleX;
+        let currentY = (e.clientY - rect.top) * scaleY;
+        
+        ctx.putImageData(savedImageData, 0, 0); 
+        
+        // Dashed line banani taaki user ko box dikhe
+        ctx.strokeStyle = '#007bff';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+    });
+
+    canvas.addEventListener('mouseup', function(e) {
+        if (!isDrawing) return;
+        isDrawing = false;
+        
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        endX = (e.clientX - rect.left) * scaleX;
+        endY = (e.clientY - rect.top) * scaleY;
+        
+        let x = Math.min(startX, endX);
+        let y = Math.min(startY, endY);
+        let w = Math.abs(endX - startX);
+        let h = Math.abs(endY - startY);
+        
+        if (w < 10 || h < 10) {
+            ctx.putImageData(savedImageData, 0, 0); // Click galti se hua toh ignore karein
+            return; 
+        }
+
+        ctx.putImageData(savedImageData, 0, 0); // Dashed line hatayein
+        
+        // Smart Erase: Background color nikal kar box me bhar do
+        const bgColor = getAverageEdgeColor(x, y, w, h);
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(x, y, w, h);
+        
+        // Turant uske upar typing field khol do
+        createTextInput(x, y, w, h, rect, scaleX, scaleY);
+    });
+
+    let activeInput = null;
+
+    function createTextInput(x, y, w, h, canvasRect, scaleX, scaleY) {
+        const input = document.createElement('textarea');
+        input.className = 'floating-input';
+        
+        input.style.left = (x / scaleX) + 'px';
+        input.style.top = (y / scaleY) + 'px';
+        input.style.width = (w / scaleX) + 'px';
+        input.style.height = (h / scaleY) + 'px';
+        
+        const fontSize = document.getElementById('fontSize').value;
+        const textColor = document.getElementById('textColor').value;
+        
+        input.style.fontSize = (fontSize / scaleY) + 'px'; 
+        input.style.color = textColor;
+        input.style.lineHeight = (fontSize / scaleY) + 'px';
+        
+        input.dataset.cx = x;
+        input.dataset.cy = y;
+        input.dataset.cw = w;
+        
+        container.appendChild(input);
+        input.focus();
+        activeInput = input;
+        
+        // Jab user bahar click kare tab text ko image par chipka do
+        input.addEventListener('blur', commitActiveInput);
+    }
+
+    function commitActiveInput() {
+        if (!activeInput) return;
+        
+        const text = activeInput.value;
+        if (text.trim() !== '') {
+            const cx = parseFloat(activeInput.dataset.cx);
+            const cy = parseFloat(activeInput.dataset.cy);
+            const fontSize = document.getElementById('fontSize').value;
+            const textColor = document.getElementById('textColor').value;
+            
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillStyle = textColor;
+            ctx.textBaseline = 'top';
+            
+            // Image par actually me likhna
+            const lines = text.split('\n');
+            let currentY = cy + 2; 
+            for(let i=0; i<lines.length; i++) {
+                ctx.fillText(lines[i], cx + 2, currentY);
+                currentY += parseInt(fontSize);
+            }
+        }
+        
+        if (activeInput.parentNode) {
+            activeInput.parentNode.removeChild(activeInput);
+        }
+        activeInput = null;
+    }
+
+    // Download Button
+    document.getElementById('downloadBtn').addEventListener('click', function() {
+        commitActiveInput(); 
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
     });
 </script>
 
