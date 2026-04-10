@@ -1,411 +1,954 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Image Editor (Clone & Bg Changer)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASUR PDF EDITOR - PRO LEVEL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        :root { --primary: #4f46e5; --bg: #f3f4f6; --text: #1f2937; --border: #e5e7eb; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        /* Topbar */
-        .topbar { background: white; height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); z-index: 10; }
-        .topbar h1 { font-size: 18px; color: var(--primary); }
-        .btn { padding: 8px 15px; border-radius: 6px; border: none; font-size: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: #10b981; color: white; }
-        
-        /* Layout */
-        .workspace { display: flex; flex: 1; height: calc(100vh - 60px); }
-        
-        /* Sidebar */
-        .sidebar { width: 280px; background: white; border-right: 1px solid var(--border); padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-        .section-title { font-size: 12px; text-transform: uppercase; color: gray; font-weight: bold; margin-bottom: 5px; }
-        
-        .tool-btn { width: 100%; padding: 10px; background: white; border: 1px solid var(--border); border-radius: 6px; text-align: left; cursor: pointer; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
-        .tool-btn.active { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
-        
-        input[type="file"] { display: none; }
-        .upload-label { display: block; width: 100%; padding: 10px; background: #f9fafb; border: 1px dashed gray; border-radius: 6px; text-align: center; cursor: pointer; font-size: 14px; margin-bottom: 10px;}
-        
-        .control-group { margin-bottom: 10px; }
-        .control-group label { font-size: 12px; color: gray; display: block; margin-bottom: 3px; }
-        .input-box { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 4px; }
-        
-        /* Canvas Area */
-        .canvas-area { flex: 1; display: flex; justify-content: center; align-items: center; padding: 20px; overflow: auto; background: #e5e7eb; }
-        #canvas-wrapper { position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.2); background-size: cover; background-position: center; }
-        canvas { display: block; max-width: 100%; height: auto; touch-action: none; }
-        
-        /* Floating Text */
-        .floating-text { position: absolute; cursor: grab; padding: 2px; border: 1px solid transparent; user-select: none; white-space: pre-wrap; word-wrap: break-word; min-width: 20px; }
-        .floating-text.selected { border: 2px dashed var(--primary); }
-        .floating-text:focus { outline: none; border: 2px solid var(--primary); cursor: text; }
-        
-        #hintBox { font-size: 12px; color: #d97706; background: #fef3c7; padding: 8px; border-radius: 4px; display: none; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        /* ASUR HEADER */
+        .asur-header {
+            background: #0f3460;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #e94560;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+        }
+
+        .asur-logo {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 3px;
+        }
+
+        .asur-logo span {
+            color: #e94560;
+            text-shadow: 0 0 10px #e94560;
+        }
+
+        .asur-badge {
+            background: #e94560;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* MAIN CONTAINER */
+        .container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        /* SIDEBAR - TOOLS */
+        .sidebar {
+            width: 280px;
+            background: #0f3460;
+            padding: 20px 15px;
+            border-right: 1px solid #1a4a7a;
+            overflow-y: auto;
+        }
+
+        .tool-section {
+            margin-bottom: 25px;
+        }
+
+        .tool-title {
+            font-size: 14px;
+            color: #e94560;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .upload-btn:hover {
+            background: #ff6b6b;
+            box-shadow: 0 0 20px #e94560;
+            transform: translateY(-2px);
+        }
+
+        .tool-btn {
+            width: 100%;
+            padding: 10px;
+            background: #1a4a7a;
+            color: white;
+            border: 1px solid #2a6a9a;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-btn:hover {
+            background: #2a6a9a;
+            border-color: #e94560;
+        }
+
+        .tool-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 40px;
+            border: 2px solid #2a6a9a;
+            border-radius: 6px;
+            background: #1a1a2e;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-container label {
+            font-size: 12px;
+            color: #aaa;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .slider-container input {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #e94560;
+        }
+
+        /* MAIN CANVAS AREA */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a2e;
+        }
+
+        .canvas-header {
+            padding: 15px 20px;
+            background: #16213e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1a4a7a;
+        }
+
+        .page-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .page-btn {
+            padding: 8px 15px;
+            background: #1a4a7a;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .page-btn:hover {
+            background: #e94560;
+        }
+
+        .page-info {
+            color: #e94560;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        .canvas-container {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: #252540;
+        }
+
+        #pdf-canvas-wrapper {
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            background: white;
+        }
+
+        #pdf-canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #fabric-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* BOTTOM ACTION BAR */
+        .action-bar {
+            padding: 15px 20px;
+            background: #16213e;
+            border-top: 1px solid #1a4a7a;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .action-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: #e94560;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ff6b6b;
+            box-shadow: 0 0 20px #e94560;
+        }
+
+        .btn-secondary {
+            background: #1a4a7a;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #2a6a9a;
+        }
+
+        /* TEXT INPUT MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #16213e;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            border: 1px solid #e94560;
+        }
+
+        .modal-content h3 {
+            color: #e94560;
+            margin-bottom: 20px;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            background: #1a1a2e;
+            border: 1px solid #2a6a9a;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            resize: none;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        /* FILE INPUT HIDDEN */
+        #file-input {
+            display: none;
+        }
+
+        /* LOADING */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #16213e;
+            padding: 20px 40px;
+            border-radius: 10px;
+            border: 2px solid #e94560;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #1a4a7a;
+            border-top: 4px solid #e94560;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e94560;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
 
-    <div class="topbar">
-        <h1>🛠️ Pro Editor</h1>
-        <button class="btn btn-success" id="downloadBtn">⬇ Download Image</button>
+<!-- ASUR HEADER -->
+<div class="asur-header">
+    <div class="asur-logo">
+        <span>ASUR</span> PDF EDITOR
     </div>
+    <div class="asur-badge">PRO LEVEL • NO LIMITS</div>
+</div>
 
-    <div class="workspace">
-        <div class="sidebar">
-            <div>
-                <div class="section-title">1. Images</div>
-                <label for="uploadImg" class="upload-label">🖼️ Upload Main Image</label>
-                <input type="file" id="uploadImg" accept="image/*">
-                
-                <label for="uploadBg" class="upload-label">🌄 Upload New Background</label>
-                <input type="file" id="uploadBg" accept="image/*">
+<!-- MAIN CONTAINER -->
+<div class="container">
+    
+    <!-- SIDEBAR TOOLS -->
+    <div class="sidebar">
+        <div class="tool-section">
+            <div class="tool-title">FILE OPERATIONS</div>
+            <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+                📁 UPLOAD PDF
+            </button>
+            <input type="file" id="file-input" accept=".pdf" onchange="loadPDF(event)">
+        </div>
+
+        <div class="tool-section">
+            <div class="tool-title">EDIT TOOLS</div>
+            <button class="tool-btn" onclick="setTool('select')" id="tool-select">
+                🖱️ SELECT / MOVE
+            </button>
+            <button class="tool-btn" onclick="setTool('text')" id="tool-text">
+                📝 ADD TEXT
+            </button>
+            <button class="tool-btn" onclick="setTool('draw')" id="tool-draw">
+                ✏️ FREE DRAW
+            </button>
+            <button class="tool-btn" onclick="setTool('line')" id="tool-line">
+                📏 LINE
+            </button>
+            <button class="tool-btn" onclick="setTool('rect')" id="tool-rect">
+                🔲 RECTANGLE
+            </button>
+            <button class="tool-btn" onclick="setTool('circle')" id="tool-circle">
+                ⭕ CIRCLE
+            </button>
+            <button class="tool-btn" onclick="deleteSelected()">
+                ❌ DELETE SELECTED
+            </button>
+            <button class="tool-btn" onclick="clearCanvas()">
+                🧹 CLEAR ALL
+            </button>
+        </div>
+
+        <div class="tool-section">
+            <div class="tool-title">STYLE</div>
+            <input type="color" id="color-picker" class="color-picker" value="#e94560">
+            
+            <div class="slider-container">
+                <label>BRUSH SIZE: <span id="brush-size-value">3</span>px</label>
+                <input type="range" id="brush-size" min="1" max="20" value="3">
             </div>
 
-            <div>
-                <div class="section-title">2. Editing Tools</div>
-                <button class="tool-btn active" id="modeSelect">🖱️ Select / Move</button>
-                <button class="tool-btn" id="modeClone">🖌️ Clone Brush (Fix Texture)</button>
-                <button class="tool-btn" id="modeErase">🧽 Eraser (Remove Bg)</button>
-                <button class="tool-btn" id="addTextBtn" style="justify-content: center; background: var(--primary); color: white;">➕ Add Text</button>
-                
-                <div id="hintBox"></div>
-                
-                <div class="control-group" id="brushSettings" style="display: none; margin-top: 10px;">
-                    <label>Brush Size: <span id="brushSizeVal">30</span>px</label>
-                    <input type="range" id="brushSize" min="5" max="100" value="30" style="width: 100%;">
-                </div>
+            <div class="slider-container">
+                <label>OPACITY: <span id="opacity-value">100</span>%</label>
+                <input type="range" id="opacity-slider" min="10" max="100" value="100">
             </div>
 
-            <div id="textProps" style="display: none;">
-                <div class="section-title">Text Properties</div>
-                <div class="control-group">
-                    <label>Color</label>
-                    <input type="color" id="textColor" class="input-box" style="padding: 2px; height: 35px;">
-                </div>
-                <div class="control-group">
-                    <label>Size</label>
-                    <input type="number" id="textSize" class="input-box" value="30">
-                </div>
-                <button class="btn" id="deleteTextBtn" style="width: 100%; background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5;">🗑️ Delete Text</button>
+            <div class="tool-title" style="margin-top: 20px;">FONT</div>
+            <select id="font-family" class="tool-btn" style="margin-bottom: 10px;">
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+            </select>
+
+            <div class="slider-container">
+                <label>FONT SIZE: <span id="font-size-value">20</span>px</label>
+                <input type="range" id="font-size" min="8" max="72" value="20">
             </div>
         </div>
 
-        <div class="canvas-area">
-            <div id="canvas-wrapper">
-                <canvas id="canvas"></canvas>
-            </div>
+        <div class="tool-section">
+            <div class="tool-title">ANNOTATIONS</div>
+            <button class="tool-btn" onclick="addHighlight()">
+                🖍️ HIGHLIGHT
+            </button>
+            <button class="tool-btn" onclick="addUnderline()">
+                U̲ UNDERLINE
+            </button>
+            <button class="tool-btn" onclick="addStrikethrough()">
+                S̶T̶R̶I̶K̶E̶T̶H̶R̶O̶U̶G̶H̶
+            </button>
         </div>
     </div>
+
+    <!-- MAIN CANVAS AREA -->
+    <div class="main-area">
+        <div class="canvas-header">
+            <div class="page-controls">
+                <button class="page-btn" onclick="previousPage()">◀ PREV</button>
+                <span class="page-info">
+                    PAGE <span id="current-page">1</span> / <span id="total-pages">1</span>
+                </span>
+                <button class="page-btn" onclick="nextPage()">NEXT ▶</button>
+            </div>
+            <div>
+                <button class="page-btn" onclick="zoomIn()">🔍+</button>
+                <button class="page-btn" onclick="zoomOut()">🔍-</button>
+                <button class="page-btn" onclick="resetZoom()">🔄 RESET</button>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div id="pdf-canvas-wrapper">
+                <canvas id="pdf-canvas"></canvas>
+                <canvas id="fabric-canvas"></canvas>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button class="action-btn btn-secondary" onclick="exportAsPDF()">
+                💾 EXPORT PDF
+            </button>
+            <button class="action-btn btn-primary" onclick="downloadPDF()">
+                ⬇️ DOWNLOAD
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- TEXT INPUT MODAL -->
+<div class="modal" id="text-modal">
+    <div class="modal-content">
+        <h3>✏️ ADD TEXT</h3>
+        <textarea id="text-input" placeholder="Type your text here..."></textarea>
+        <div class="modal-buttons">
+            <button class="action-btn btn-secondary" onclick="closeTextModal()">CANCEL</button>
+            <button class="action-btn btn-primary" onclick="addTextToCanvas()">ADD</button>
+        </div>
+    </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading" id="loading">
+    <div class="loading-spinner"></div>
+</div>
 
 <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const wrapper = document.getElementById('canvas-wrapper');
-    const hintBox = document.getElementById('hintBox');
-    const brushSettings = document.getElementById('brushSettings');
-    
-    let mainImg = new Image();
-    let originalFilename = "edited_image.png";
-    let currentMode = 'select'; // select, clone-pick, clone-paint, erase
-    let selectedText = null;
+    // ================================================================
+    // ASUR PDF EDITOR - CORE ENGINE
+    // ================================================================
+
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let scale = 1.5;
+    let fabricCanvas = null;
+    let currentTool = 'select';
     let isDrawing = false;
-    
-    // Clone Brush Variables
-    let cloneSrcX = 0, cloneSrcY = 0;
-    let cloneImgData = null; // To store original pixels for clean copying
+    let startPoint = null;
+    let currentObject = null;
 
-    // --- TOOL SWITCHING ---
-    function setMode(mode) {
-        currentMode = mode;
-        document.getElementById('modeSelect').classList.remove('active');
-        document.getElementById('modeClone').classList.remove('active');
-        document.getElementById('modeErase').classList.remove('active');
-        
-        hintBox.style.display = 'none';
-        brushSettings.style.display = 'none';
-        canvas.style.cursor = 'default';
+    // Initialize Fabric.js Canvas
+    function initFabricCanvas() {
+        const canvasElement = document.getElementById('fabric-canvas');
+        fabricCanvas = new fabric.Canvas('fabric-canvas', {
+            selection: true,
+            preserveObjectStacking: true
+        });
 
-        if(mode === 'select') {
-            document.getElementById('modeSelect').classList.add('active');
-        } 
-        else if (mode === 'clone-pick') {
-            document.getElementById('modeClone').classList.add('active');
-            canvas.style.cursor = 'crosshair';
-            hintBox.style.display = 'block';
-            hintBox.innerText = "Step 1: Canvas par wahan CLICK karein jahan se texture/color COPY karna hai (Jaise saaf cream background).";
-            brushSettings.style.display = 'block';
-            deselectText();
-        }
-        else if (mode === 'clone-paint') {
-            document.getElementById('modeClone').classList.add('active');
-            canvas.style.cursor = 'cell';
-            hintBox.style.display = 'block';
-            hintBox.innerText = "Step 2: Ab grey dabbe ke upar mouse se DRAG karke paint karein. Naya source chunne ke liye tool pe dubara click karein.";
-            brushSettings.style.display = 'block';
-        }
-        else if (mode === 'erase') {
-            document.getElementById('modeErase').classList.add('active');
-            canvas.style.cursor = 'not-allowed'; // Custom cursor can be used
-            hintBox.style.display = 'block';
-            hintBox.innerText = "Jahan background mitana hai wahan paint karein. Naya Background lagane ke liye left se upload karein.";
-            brushSettings.style.display = 'block';
-            deselectText();
-        }
+        // Event listeners for drawing
+        fabricCanvas.on('mouse:down', onMouseDown);
+        fabricCanvas.on('mouse:move', onMouseMove);
+        fabricCanvas.on('mouse:up', onMouseUp);
+
+        // Update tool UI
+        updateToolUI();
     }
 
-    document.getElementById('modeSelect').addEventListener('click', () => setMode('select'));
-    document.getElementById('modeClone').addEventListener('click', () => {
-        // Hamesha pehle 'pick' mode me jayega taaki source select ho
-        cloneImgData = ctx.getImageData(0, 0, canvas.width, canvas.height); 
-        setMode('clone-pick');
-    });
-    document.getElementById('modeErase').addEventListener('click', () => setMode('erase'));
-    
-    document.getElementById('brushSize').addEventListener('input', function() {
-        document.getElementById('brushSizeVal').innerText = this.value;
-    });
+    // Load PDF
+    async function loadPDF(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    // --- UPLOADS ---
-    // 1. Main Image
-    document.getElementById('uploadImg').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        originalFilename = "edited_" + file.name;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            mainImg.onload = () => {
-                canvas.width = mainImg.width; canvas.height = mainImg.height;
-                ctx.drawImage(mainImg, 0, 0);
-                wrapper.style.width = mainImg.width + 'px';
-                wrapper.style.height = mainImg.height + 'px';
+        showLoading();
+        
+        const fileReader = new FileReader();
+        fileReader.onload = async function(e) {
+            const typedArray = new Uint8Array(e.target.result);
+            
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            
+            try {
+                pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+                totalPages = pdfDoc.numPages;
+                document.getElementById('total-pages').textContent = totalPages;
+                currentPage = 1;
+                await renderPage(currentPage);
+                hideLoading();
+            } catch (error) {
+                console.error('PDF Load Error:', error);
+                alert('PDF लोड करने में एरर। फाइल चेक करो।');
+                hideLoading();
             }
-            mainImg.src = ev.target.result;
         };
-        reader.readAsDataURL(file);
-    });
-
-    // 2. Background Image
-    document.getElementById('uploadBg').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            // Wrapper ke CSS background me set kar dete hain
-            wrapper.style.backgroundImage = `url(${ev.target.result})`;
-            setMode('erase'); // Automatically eraser select ho jaye
-        };
-        reader.readAsDataURL(file);
-    });
-
-    // --- CANVAS DRAWING (CLONE & ERASE) ---
-    function getMousePos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+        
+        fileReader.readAsArrayBuffer(file);
     }
 
-    canvas.addEventListener('mousedown', startDrawing);
-    canvas.addEventListener('touchstart', startDrawing, {passive: false});
+    // Render PDF Page
+    async function renderPage(pageNum) {
+        if (!pdfDoc) return;
 
-    function startDrawing(e) {
-        if(currentMode === 'select') return;
-        if(e.touches) e.preventDefault();
+        showLoading();
         
-        const pos = getMousePos(e);
+        try {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: scale });
+            
+            const canvas = document.getElementById('pdf-canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            await page.render(renderContext).promise;
+            
+            // Resize fabric canvas
+            document.getElementById('pdf-canvas-wrapper').style.width = viewport.width + 'px';
+            document.getElementById('pdf-canvas-wrapper').style.height = viewport.height + 'px';
+            
+            fabricCanvas.setWidth(viewport.width);
+            fabricCanvas.setHeight(viewport.height);
+            fabricCanvas.setZoom(1);
+            
+            document.getElementById('current-page').textContent = pageNum;
+            
+            // Clear annotations on page change (you can implement per-page storage)
+            fabricCanvas.clear();
+            
+            hideLoading();
+        } catch (error) {
+            console.error('Render Error:', error);
+            hideLoading();
+        }
+    }
+
+    // Tool Management
+    function setTool(tool) {
+        currentTool = tool;
+        updateToolUI();
         
-        if (currentMode === 'clone-pick') {
-            // Source set karo aur paint mode me jao
-            cloneSrcX = pos.x;
-            cloneSrcY = pos.y;
-            setMode('clone-paint');
+        if (tool === 'select') {
+            fabricCanvas.isDrawingMode = false;
+            fabricCanvas.selection = true;
+        } else if (tool === 'draw') {
+            fabricCanvas.isDrawingMode = true;
+            fabricCanvas.selection = false;
+            fabricCanvas.freeDrawingBrush.color = document.getElementById('color-picker').value;
+            fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById('brush-size').value);
+        } else {
+            fabricCanvas.isDrawingMode = false;
+            fabricCanvas.selection = true;
+        }
+    }
+
+    function updateToolUI() {
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        const activeBtn = document.getElementById(`tool-${currentTool}`);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    // Mouse Events for Shapes
+    function onMouseDown(e) {
+        if (currentTool === 'select' || currentTool === 'draw' || currentTool === 'text') return;
+        
+        isDrawing = true;
+        const pointer = fabricCanvas.getPointer(e.e);
+        startPoint = { x: pointer.x, y: pointer.y };
+        
+        const color = document.getElementById('color-picker').value;
+        const strokeWidth = parseInt(document.getElementById('brush-size').value);
+        
+        if (currentTool === 'line') {
+            currentObject = new fabric.Line([pointer.x, pointer.y, pointer.x, pointer.y], {
+                stroke: color,
+                strokeWidth: strokeWidth
+            });
+        } else if (currentTool === 'rect') {
+            currentObject = new fabric.Rect({
+                left: pointer.x,
+                top: pointer.y,
+                width: 0,
+                height: 0,
+                fill: 'transparent',
+                stroke: color,
+                strokeWidth: strokeWidth
+            });
+        } else if (currentTool === 'circle') {
+            currentObject = new fabric.Circle({
+                left: pointer.x,
+                top: pointer.y,
+                radius: 0,
+                fill: 'transparent',
+                stroke: color,
+                strokeWidth: strokeWidth
+            });
+        }
+        
+        if (currentObject) {
+            fabricCanvas.add(currentObject);
+        }
+    }
+
+    function onMouseMove(e) {
+        if (!isDrawing || !currentObject) return;
+        
+        const pointer = fabricCanvas.getPointer(e.e);
+        
+        if (currentTool === 'line') {
+            currentObject.set({ x2: pointer.x, y2: pointer.y });
+        } else if (currentTool === 'rect') {
+            const width = Math.abs(pointer.x - startPoint.x);
+            const height = Math.abs(pointer.y - startPoint.y);
+            currentObject.set({
+                width: width,
+                height: height,
+                left: Math.min(pointer.x, startPoint.x),
+                top: Math.min(pointer.y, startPoint.y)
+            });
+        } else if (currentTool === 'circle') {
+            const radius = Math.sqrt(
+                Math.pow(pointer.x - startPoint.x, 2) + 
+                Math.pow(pointer.y - startPoint.y, 2)
+            ) / 2;
+            currentObject.set({
+                radius: radius,
+                left: (pointer.x + startPoint.x) / 2 - radius,
+                top: (pointer.y + startPoint.y) / 2 - radius
+            });
+        }
+        
+        fabricCanvas.renderAll();
+    }
+
+    function onMouseUp(e) {
+        isDrawing = false;
+        currentObject = null;
+    }
+
+    // Text Functions
+    function showTextModal() {
+        document.getElementById('text-modal').style.display = 'flex';
+        document.getElementById('text-input').focus();
+    }
+
+    function closeTextModal() {
+        document.getElementById('text-modal').style.display = 'none';
+        document.getElementById('text-input').value = '';
+    }
+
+    function addTextToCanvas() {
+        const text = document.getElementById('text-input').value;
+        if (!text) return;
+        
+        const color = document.getElementById('color-picker').value;
+        const fontFamily = document.getElementById('font-family').value;
+        const fontSize = parseInt(document.getElementById('font-size').value);
+        
+        const textObj = new fabric.Text(text, {
+            left: 100,
+            top: 100,
+            fill: color,
+            fontFamily: fontFamily,
+            fontSize: fontSize
+        });
+        
+        fabricCanvas.add(textObj);
+        fabricCanvas.setActiveObject(textObj);
+        fabricCanvas.renderAll();
+        
+        closeTextModal();
+    }
+
+    // Delete Selected
+    function deleteSelected() {
+        const activeObject = fabricCanvas.getActiveObject();
+        if (activeObject) {
+            fabricCanvas.remove(activeObject);
+            fabricCanvas.renderAll();
+        }
+    }
+
+    // Clear Canvas
+    function clearCanvas() {
+        if (confirm('सारे एडिट क्लियर कर दें? ये वापस नहीं आएंगे।')) {
+            fabricCanvas.clear();
+        }
+    }
+
+    // Annotation Functions
+    function addHighlight() {
+        const activeObject = fabricCanvas.getActiveObject();
+        if (activeObject && activeObject.type === 'text') {
+            activeObject.set('backgroundColor', 'rgba(255, 255, 0, 0.3)');
+            fabricCanvas.renderAll();
+        }
+    }
+
+    function addUnderline() {
+        const activeObject = fabricCanvas.getActiveObject();
+        if (activeObject && activeObject.type === 'text') {
+            activeObject.set('underline', !activeObject.underline);
+            fabricCanvas.renderAll();
+        }
+    }
+
+    function addStrikethrough() {
+        const activeObject = fabricCanvas.getActiveObject();
+        if (activeObject && activeObject.type === 'text') {
+            activeObject.set('linethrough', !activeObject.linethrough);
+            fabricCanvas.renderAll();
+        }
+    }
+
+    // Page Navigation
+    async function previousPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            await renderPage(currentPage);
+        }
+    }
+
+    async function nextPage() {
+        if (currentPage < totalPages) {
+            currentPage++;
+            await renderPage(currentPage);
+        }
+    }
+
+    // Zoom Functions
+    function zoomIn() {
+        scale += 0.25;
+        renderPage(currentPage);
+    }
+
+    function zoomOut() {
+        if (scale > 0.5) {
+            scale -= 0.25;
+            renderPage(currentPage);
+        }
+    }
+
+    function resetZoom() {
+        scale = 1.5;
+        renderPage(currentPage);
+    }
+
+    // Export Functions
+    async function exportAsPDF() {
+        if (!pdfDoc) {
+            alert('पहले PDF लोड करो।');
             return;
         }
         
-        isDrawing = true;
-        drawProcess(pos.x, pos.y);
-    }
-
-    canvas.addEventListener('mousemove', (e) => { if(isDrawing) drawProcess(getMousePos(e).x, getMousePos(e).y); });
-    canvas.addEventListener('touchmove', (e) => { if(isDrawing) { e.preventDefault(); drawProcess(getMousePos(e).touches ? getMousePos(e).x : getMousePos({touches:[e.touches[0]]}).x, getMousePos({touches:[e.touches[0]]}).y); } }, {passive: false});
-
-    window.addEventListener('mouseup', () => isDrawing = false);
-    window.addEventListener('touchend', () => isDrawing = false);
-
-    function drawProcess(x, y) {
-        const bSize = parseInt(document.getElementById('brushSize').value);
+        showLoading();
         
-        if (currentMode === 'erase') {
-            // Make pixels transparent
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.beginPath();
-            ctx.arc(x, y, bSize, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.globalCompositeOperation = 'source-over'; // reset
-        } 
-        else if (currentMode === 'clone-paint') {
-            // Clone texture logic
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y, bSize, 0, Math.PI * 2);
-            ctx.clip();
+        try {
+            const { jsPDF } = window.jspdf;
             
-            // Draw original pixels from the selected source area
-            // Offset logic: hum mouse (x,y) par source (cloneSrcX, cloneSrcY) ka center draw karna chahte hain
-            const offsetX = x - cloneSrcX;
-            const offsetY = y - cloneSrcY;
+            const canvas = document.getElementById('pdf-canvas');
+            const fabricCanvasElement = document.getElementById('fabric-canvas');
             
-            // Use a temporary canvas to draw the snapshot we took during clone-pick
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-            tempCanvas.getContext('2d').putImageData(cloneImgData, 0, 0);
+            // Create combined canvas
+            const combinedCanvas = document.createElement('canvas');
+            combinedCanvas.width = canvas.width;
+            combinedCanvas.height = canvas.height;
+            const ctx = combinedCanvas.getContext('2d');
             
-            ctx.drawImage(tempCanvas, offsetX, offsetY);
-            ctx.restore();
+            // Draw PDF
+            ctx.drawImage(canvas, 0, 0);
+            
+            // Draw annotations
+            ctx.drawImage(fabricCanvasElement, 0, 0);
+            
+            // Create PDF
+            const imgData = combinedCanvas.toDataURL('image/jpeg', 0.95);
+            
+            const pdf = new jsPDF({
+                orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+            
+            hideLoading();
+            
+            // Preview or download
+            pdf.save('asur_edited.pdf');
+            
+        } catch (error) {
+            console.error('Export Error:', error);
+            alert('एक्सपोर्ट में एरर।');
+            hideLoading();
         }
     }
 
+    async function downloadPDF() {
+        await exportAsPDF();
+    }
 
-    // --- FLOATING TEXT LOGIC ---
-    document.getElementById('addTextBtn').addEventListener('click', () => {
-        setMode('select');
-        const textDiv = document.createElement('div');
-        textDiv.className = 'floating-text';
-        textDiv.innerText = "Double Click Edit";
-        textDiv.style.fontSize = '40px';
-        textDiv.style.color = '#ff0000';
-        textDiv.style.fontWeight = 'bold';
-        
-        // Center text initially
-        textDiv.style.left = '50px';
-        textDiv.style.top = '50px';
-        
-        setupTextDrag(textDiv);
-        wrapper.appendChild(textDiv);
-        selectText(textDiv);
+    // UI Helpers
+    function showLoading() {
+        document.getElementById('loading').style.display = 'block';
+    }
+
+    function hideLoading() {
+        document.getElementById('loading').style.display = 'none';
+    }
+
+    // Event Listeners for UI Controls
+    document.getElementById('brush-size').addEventListener('input', function() {
+        document.getElementById('brush-size-value').textContent = this.value;
+        if (fabricCanvas && fabricCanvas.freeDrawingBrush) {
+            fabricCanvas.freeDrawingBrush.width = parseInt(this.value);
+        }
     });
 
-    function setupTextDrag(el) {
-        let isDraggingText = false, startX, startY;
+    document.getElementById('font-size').addEventListener('input', function() {
+        document.getElementById('font-size-value').textContent = this.value;
+    });
 
-        el.addEventListener('dblclick', () => {
-            if(currentMode !== 'select') return;
-            el.contentEditable = true; el.focus();
-            document.execCommand('selectAll', false, null);
-        });
-        el.addEventListener('blur', () => { el.contentEditable = false; });
-
-        const dragStart = (e) => {
-            if(currentMode !== 'select' || el.contentEditable === "true") return;
-            selectText(el);
-            isDraggingText = true;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            startX = clientX - el.offsetLeft;
-            startY = clientY - el.offsetTop;
-            if(!e.touches) e.stopPropagation();
-        };
-
-        el.addEventListener('mousedown', dragStart);
-        el.addEventListener('touchstart', dragStart, {passive: false});
-
-        const dragMove = (e) => {
-            if(!isDraggingText) return;
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            el.style.left = (clientX - startX) + 'px';
-            el.style.top = (clientY - startY) + 'px';
-        };
-
-        document.addEventListener('mousemove', dragMove);
-        document.addEventListener('touchmove', (e) => { if(isDraggingText){ e.preventDefault(); dragMove(e); } }, {passive: false});
-        
-        const dragEnd = () => isDraggingText = false;
-        document.addEventListener('mouseup', dragEnd);
-        document.addEventListener('touchend', dragEnd);
-    }
-
-    function selectText(el) {
-        deselectText();
-        selectedText = el;
-        selectedText.classList.add('selected');
-        document.getElementById('textProps').style.display = 'block';
-        
-        // RGB to Hex converter
-        let rgb = selectedText.style.color.match(/\d+/g);
-        let hex = rgb ? `#${((1<<24)+(parseInt(rgb[0])<<16)+(parseInt(rgb[1])<<8)+parseInt(rgb[2])).toString(16).slice(1)}` : '#000000';
-        
-        document.getElementById('textColor').value = hex;
-        document.getElementById('textSize').value = parseInt(selectedText.style.fontSize);
-    }
-
-    function deselectText() {
-        if(selectedText) {
-            selectedText.classList.remove('selected');
-            selectedText.contentEditable = false;
+    document.getElementById('opacity-slider').addEventListener('input', function() {
+        document.getElementById('opacity-value').textContent = this.value;
+        const activeObject = fabricCanvas.getActiveObject();
+        if (activeObject) {
+            activeObject.set('opacity', this.value / 100);
+            fabricCanvas.renderAll();
         }
-        selectedText = null;
-        document.getElementById('textProps').style.display = 'none';
-    }
+    });
 
-    wrapper.addEventListener('mousedown', (e) => { if(e.target === canvas) deselectText(); });
-
-    // Text Properties Listeners
-    document.getElementById('textColor').addEventListener('input', function() { if(selectedText) selectedText.style.color = this.value; });
-    document.getElementById('textSize').addEventListener('input', function() { if(selectedText) selectedText.style.fontSize = this.value + 'px'; });
-    document.getElementById('deleteTextBtn').addEventListener('click', function() { if(selectedText) { selectedText.remove(); deselectText(); } });
-
-    // --- FINAL DOWNLOAD ---
-    document.getElementById('downloadBtn').addEventListener('click', function() {
-        if(canvas.width === 300) { alert("Pehle Image upload karein!"); return; } // default width check
-        deselectText();
-        
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = canvas.width; finalCanvas.height = canvas.height;
-        const finalCtx = finalCanvas.getContext('2d');
-        
-        // Agar CSS me background image hai, toh usko bhi render karna padega
-        const bgUrl = wrapper.style.backgroundImage.slice(5, -2);
-        if(bgUrl) {
-            const bgImg = new Image();
-            bgImg.src = bgUrl;
-            // Draw background image scaled to fit canvas
-            finalCtx.drawImage(bgImg, 0, 0, finalCanvas.width, finalCanvas.height);
+    // Override setTool for text
+    const originalSetTool = setTool;
+    setTool = function(tool) {
+        if (tool === 'text') {
+            showTextModal();
+            currentTool = 'select';
+            updateToolUI();
         } else {
-            // Default background agar PNG me transparent area hai
-            finalCtx.fillStyle = '#ffffff';
-            finalCtx.fillRect(0,0, finalCanvas.width, finalCanvas.height);
+            originalSetTool(tool);
+        }
+    };
+
+    // Keyboard Shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            if (document.activeElement.tagName !== 'INPUT' && 
+                document.activeElement.tagName !== 'TEXTAREA') {
+                deleteSelected();
+                e.preventDefault();
+            }
         }
         
-        // Main canvas draw (jisme clone aur erase ho chuka hai)
-        finalCtx.drawImage(canvas, 0, 0);
-
-        // Draw Floating Texts
-        const scaleX = canvas.width / wrapper.clientWidth;
-        const scaleY = canvas.height / wrapper.clientHeight;
-        
-        document.querySelectorAll('.floating-text').forEach(el => {
-            const x = el.offsetLeft * scaleX;
-            const y = el.offsetTop * scaleY;
-            const size = parseInt(el.style.fontSize) * scaleY; // scale font
-            
-            finalCtx.font = `bold ${size}px Arial, sans-serif`;
-            finalCtx.fillStyle = el.style.color;
-            finalCtx.textBaseline = 'top';
-            
-            el.innerText.split('\n').forEach((line, i) => finalCtx.fillText(line, x, y + (i * size * 1.2)));
-        });
-
-        const link = document.createElement('a');
-        link.download = originalFilename;
-        link.href = finalCanvas.toDataURL("image/png", 1.0);
-        link.click();
+        // Ctrl+Z for undo (basic)
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            // Implement undo if needed
+        }
     });
+
+    // Initialize on load
+    window.onload = function() {
+        initFabricCanvas();
+        
+        // Load sample PDF or show empty state
+        console.log('ASUR PDF EDITOR READY');
+    };
+
 </script>
 
 </body>
