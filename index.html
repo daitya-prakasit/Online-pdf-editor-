@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAITYA - Image Text Editor (Auto-Color & Exact Size)</title>
+    <title>DAITYA - Image Text Editor (Pro Version)</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
     <style>
-        :root { --primary: #8b5cf6; --primary-hover: #7c3aed; --bg: #0f172a; --surface: #1e293b; --border: #334155; --text: #f8fafc; --text-muted: #94a3b8; }
+        :root { --primary: #8b5cf6; --primary-hover: #7c3aed; --success: #10b981; --success-hover: #059669; --bg: #0f172a; --surface: #1e293b; --border: #334155; --text: #f8fafc; --text-muted: #94a3b8; }
         body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
         .container { max-width: 1000px; margin: 0 auto; background: var(--surface); border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); padding: 30px; border: 1px solid var(--border); }
         .header { text-align: center; margin-bottom: 30px; }
@@ -26,16 +26,19 @@
         input[type="text"] { padding: 12px; background: #1e293b; color: white; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s; font-family: inherit;}
         input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
 
-        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;}
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; margin-bottom: 10px;}
         .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
         .btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; transform: none; }
+        
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: var(--success-hover); }
 
         #status { text-align: center; padding: 15px; border-radius: 8px; background: #020617; color: #10b981; font-weight: bold; margin-bottom: 20px; display: none; font-size: 13px; border: 1px solid #10b981;}
         
         .result-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #000; min-height: 400px; display: flex; align-items: center; justify-content: center; position: relative;}
         canvas { max-width: 100%; height: auto; display: block; }
 
-        .color-preview-box { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
+        .color-preview-box { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); margin-bottom: 15px;}
         .color-sample { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); }
         .color-label { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px; font-weight: bold;}
 
@@ -47,7 +50,7 @@
     <div class="container">
         <div class="header">
             <h1>DAITYA Execution Terminal</h1>
-            <p>Module: Deep OCR | Exact Color Match | Dynamic Pixel Size Matching</p>
+            <p>Module: Deep OCR | Exact Color Match | Dynamic Size | Output Downloader</p>
         </div>
 
         <div id="status">> System initialized. Waiting for payload (Image).</div>
@@ -67,6 +70,7 @@
                     <label>Injection Text</label>
                     <input type="text" id="newText" placeholder="e.g. BYPASS">
                 </div>
+                
                 <button class="btn" id="btnReplace" onclick="processTextReplacement()" disabled>
                     [ EXECUTE OVERRIDE ]
                 </button>
@@ -81,6 +85,10 @@
                         <div class="color-label">TEXT HEX</div>
                     </div>
                 </div>
+
+                <button class="btn btn-success" id="btnDownload" onclick="downloadImage()" disabled>
+                    [ DOWNLOAD OUTPUT ]
+                </button>
             </div>
             
             <div class="result-panel">
@@ -101,6 +109,7 @@
             statusEl.innerText = '> ' + msg;
         }
 
+        // Image Upload Handler
         document.getElementById('uploadImage').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -119,6 +128,7 @@
 
                         logStatus('Image parsed into memory. Enter parameters.');
                         document.getElementById('btnReplace').disabled = false;
+                        document.getElementById('btnDownload').disabled = false; // Enable download
                     };
                     currentImage.src = event.target.result;
                 };
@@ -126,6 +136,7 @@
             }
         });
 
+        // OCR and Replacement Logic
         async function processTextReplacement() {
             if (!currentImage || !originalCanvas) return;
             const oldTextTarget = document.getElementById('oldText').value.trim();
@@ -157,40 +168,35 @@
                 const bbox = targetWord.bbox;
                 const { x0, y0, x1, y1 } = bbox;
                 const width = x1 - x0;
-                const targetHeight = y1 - y0; // The exact pixel height of the old text
+                const targetHeight = y1 - y0;
 
-                // 1. Color Extraction
+                // Color Extraction
                 const { backgroundColor, textColor } = analyzeBBoxColors(bbox, originalCanvas);
                 document.getElementById('sampleBackground').style.background = backgroundColor;
                 document.getElementById('sampleText').style.background = textColor;
 
-                // 2. Erase Old Text (In-Paint Mask)
+                // Erase Old Text
                 ctx.fillStyle = backgroundColor;
-                const maskPadding = targetHeight * 0.1; // 10% padding
+                const maskPadding = targetHeight * 0.1; 
                 ctx.fillRect(x0 - maskPadding, y0 - maskPadding, width + (maskPadding*2), targetHeight + (maskPadding*2));
 
-                // 3. Dynamic Font Scaling (Exact Size Matching)
-                // Hum guess work nahi karenge. Hum height calculate karke exact match karenge.
+                // Dynamic Font Scaling
                 let fontSize = targetHeight; 
                 ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
                 
-                // Measure mathematical height of the new text
                 let metrics = ctx.measureText(newTextData);
                 let actualRenderedHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
                 
-                // Agar actual rendered height target height se alag hai, toh scale adjust karo
                 if (actualRenderedHeight > 0) {
                     let scaleFactor = targetHeight / actualRenderedHeight;
-                    fontSize = fontSize * scaleFactor * 0.85; // 0.85 multiplier to prevent descender clipping
+                    fontSize = fontSize * scaleFactor * 0.85; 
                 }
 
-                // Apply Perfect Matched Font
+                // Inject Text
                 ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
                 ctx.fillStyle = textColor;
                 ctx.textBaseline = 'top';
-                
-                // Inject Text
-                ctx.fillText(newTextData, x0, y0 + (targetHeight * 0.05)); // Slight Y adjustment for baseline
+                ctx.fillText(newTextData, x0, y0 + (targetHeight * 0.05));
 
                 logStatus(`OVERRIDE COMPLETE. Injected [${newTextData}] at exact size & color.`);
                 document.getElementById('btnReplace').disabled = false;
@@ -201,7 +207,7 @@
             }
         }
 
-        // --- Color Algorithms ---
+        // --- Core Functions ---
         function analyzeBBoxColors(bbox, sourceCanvas) {
             const { x0, y0, x1, y1 } = bbox;
             const w = x1 - x0;
@@ -249,8 +255,18 @@
                     maxContrast = [pr, pg, pb];
                 }
             }
-            if (maxDistance < 20) return `rgb(0,0,0)`; // Failsafe
+            if (maxDistance < 20) return `rgb(0,0,0)`; 
             return `rgb(${maxContrast[0]}, ${maxContrast[1]}, ${maxContrast[2]})`;
+        }
+
+        // --- Download Execution ---
+        function downloadImage() {
+            if (!currentImage) return;
+            const link = document.createElement('a');
+            link.download = 'DAITYA_Output_Image.png';
+            link.href = canvas.toDataURL('image/png', 1.0); // 1.0 means Max Quality
+            link.click();
+            logStatus('Payload output downloaded successfully.');
         }
     </script>
 </body>
