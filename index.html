@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pro Image Editor</title>
+    <title>Pro AI Image Editor</title>
     <style>
         :root {
             --primary: #4f46e5;
@@ -13,11 +13,26 @@
             --text-main: #1f2937;
             --text-muted: #6b7280;
             --border: #e5e7eb;
+            --success: #10b981;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); color: white;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; backdrop-filter: blur(5px);
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top: 4px solid white; width: 40px; height: 40px;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Navbar & Layout */
         .app-container { display: flex; flex-direction: column; width: 100%; }
@@ -31,12 +46,20 @@
         .section-title { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; }
         
         /* Buttons & Inputs */
-        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; text-decoration: none;}
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
         .btn-outline:hover { background: var(--bg-color); }
+        .btn-success { background: var(--success); color: white; }
         .btn.active { border-color: var(--primary); background: #eef2ff; color: var(--primary); }
+        
+        /* AI Button Special Style */
+        .btn-ai {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            color: white; position: relative; overflow: hidden;
+        }
+        .btn-ai:hover { opacity: 0.9; transform: translateY(-1px); }
         
         input[type="file"] { display: none; }
         .control-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px; }
@@ -66,10 +89,16 @@
 </head>
 <body>
 
+<div id="loadingOverlay">
+    <div class="spinner"></div>
+    <p id="loadingText">AI is cleaning your image...</p>
+    <p style="font-size: 12px; color: #ccc; margin-top: 10px;">(This usually takes 10-20 seconds)</p>
+</div>
+
 <div class="app-container">
     <div class="topbar">
-        <h1>✨ ProEditor</h1>
-        <button class="btn btn-primary" id="downloadBtn" style="width: auto; padding: 8px 20px;">⬇ Export Image</button>
+        <h1>✨ ProAI Editor</h1>
+        <button class="btn btn-success" id="downloadBtn" style="width: auto; padding: 8px 20px;">⬇ Export Final Image</button>
     </div>
 
     <div class="main-workspace">
@@ -81,13 +110,18 @@
             </div>
 
             <div>
-                <div class="section-title">2. Tools</div>
+                <div class="section-title">2. AI Actions (Beta)</div>
+                <button class="btn btn-ai" id="aiCleanBtn">🪄 AI Clean & Enhance</button>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.3;">Uses AI to remove noise, sharpen, and make image crisp. (Requires backend setup for real results).</p>
+            </div>
+
+            <div>
+                <div class="section-title">3. Editing Tools</div>
                 <div class="row">
                     <button class="btn btn-outline active" id="modeSelect">🖱 Select</button>
                     <button class="btn btn-outline" id="modeErase">🧹 Hide Text</button>
                 </div>
                 <button class="btn btn-outline" id="addTextBtn" style="margin-top: 10px;">➕ Add Text</button>
-                <p id="eraseHint" class="hidden" style="font-size: 12px; color: #eab308; margin-top: 8px; line-height: 1.4;">Hint: Draw a box over old text to automatically hide it with background color.</p>
             </div>
 
             <div id="textProperties">
@@ -125,51 +159,44 @@
 </div>
 
 <script>
+    // --- SETUP & UTILITIES ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     const wrapper = document.getElementById('editor-wrapper');
+    const loadingOverlay = document.getElementById('loadingOverlay');
     const img = new Image();
     
-    let currentMode = 'select'; // 'select' or 'erase'
+    let currentMode = 'select';
     let originalFileName = "pro_edit.png";
     let selectedElement = null;
     let textIdCounter = 0;
-
-    // Drawing state for eraser
     let isDrawing = false;
     let startX, startY;
     let savedImageData = null;
 
-    // UI Elements
     const modeSelectBtn = document.getElementById('modeSelect');
     const modeEraseBtn = document.getElementById('modeErase');
     const textPropsPanel = document.getElementById('textProperties');
-
-    // --- TOOL SWITCHING ---
-    modeSelectBtn.addEventListener('click', () => setMode('select'));
-    modeEraseBtn.addEventListener('click', () => setMode('erase'));
 
     function setMode(mode) {
         currentMode = mode;
         modeSelectBtn.classList.toggle('active', mode === 'select');
         modeEraseBtn.classList.toggle('active', mode === 'erase');
         canvas.style.cursor = mode === 'erase' ? 'crosshair' : 'default';
-        document.getElementById('eraseHint').classList.toggle('hidden', mode !== 'erase');
-        
         if (mode === 'erase') deselectAll();
     }
+    modeSelectBtn.addEventListener('click', () => setMode('select'));
+    modeEraseBtn.addEventListener('click', () => setMode('erase'));
 
     // --- IMAGE UPLOAD ---
     document.getElementById('uploadImg').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
         originalFileName = file.name.split('.')[0] + "_edited.png";
-        
         const reader = new FileReader();
         reader.onload = function(event) {
             img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
+                canvas.width = img.width; canvas.height = img.height;
                 ctx.drawImage(img, 0, 0);
                 document.querySelectorAll('.pro-text').forEach(el => el.remove());
                 deselectAll();
@@ -179,272 +206,209 @@
         reader.readAsDataURL(file);
     });
 
-    // --- ADD TEXT ---
+    // =========================================================
+    // --- PRO AI CLEANING LOGIC (CORE NEW FEATURE) ---
+    // =========================================================
+    document.getElementById('aiCleanBtn').addEventListener('click', async function() {
+        if(!img.src || img.src.startsWith('data:image/gif')) { alert("Please upload an image first."); return; }
+        
+        deselectAll(); // Text boxes hatao taaki sirf base image clean ho
+        
+        // 1. Show Loading Screen
+        loadingOverlay.style.display = 'flex';
+        
+        try {
+            // 2. Get Canvas Data as Base64 (to send to backend)
+            const base64Image = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // ---------------------------------------------------------
+            // ⚠️ REAL BACKEND INTEGRATION ZONE ⚠️
+            // ---------------------------------------------------------
+            // Niche diya gaya code asli server call ko simulate karta hai.
+            // Asliyat mein kaam karne ke liye, aapko ye comments hata kar
+            // apna backend endpoint URL daalna hoga.
+            
+            /*
+            const response = await fetch('https://your-backend-api.com/enhance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Image })
+            });
+            const result = await response.json();
+            if(!result.enhancedImage) throw new Error("API failed");
+            const enhancedImgUrl = result.enhancedImage; // URL or Base64 of cleaned image
+            */
+            
+            // --- SIMULATION START (Ye real AI nahi hai, sirf dikhaawa hai) ---
+            console.log("Sending image to AI backend...");
+            // Simulate network delay (10 seconds)
+            await new Promise(resolve => setTimeout(resolve, 10000)); 
+            
+            // Chunki humare paas server nahi hai, hum wahi purani image load kar rahe hain.
+            // Real setup mein yahan 'enhancedImgUrl' aayega server se.
+            const enhancedImgUrl = base64Image; 
+            console.log("Received enhanced image from AI.");
+            // --- SIMULATION END ---
+
+            // 3. Load Enhanced Image back to Canvas
+            const cleanedImg = new Image();
+            cleanedImg.onload = function() {
+                canvas.width = cleanedImg.width; canvas.height = cleanedImg.height;
+                ctx.drawImage(cleanedImg, 0, 0);
+                loadingOverlay.style.display = 'none'; // Hide loading
+                alert("✨ Image enhanced by AI! (Simulated result)");
+            }
+            cleanedImg.src = enhancedImgUrl;
+
+        } catch (error) {
+            console.error("AI Enhancement Error:", error);
+            alert("Failed to connect to AI server. Please check backend setup.");
+            loadingOverlay.style.display = 'none';
+        }
+    });
+    // =========================================================
+
+
+    // --- EDITING TOOLS LOGIC (Copy from pichla code) ---
     document.getElementById('addTextBtn').addEventListener('click', function() {
         if(!img.src) { alert("Please upload an image first."); return; }
         setMode('select');
-        
-        const x = canvas.width / 2;
-        const y = canvas.height / 2;
-        createNewText("Double Click to Edit", x, y, 32, "#000000", "bold");
+        createNewText("Double Click to Edit", canvas.width/2, canvas.height/2, 32, "#000000", "bold");
     });
 
     function createNewText(content, x, y, size, color, weight) {
         const el = document.createElement('div');
-        el.className = 'pro-text';
-        el.contentEditable = false; // Turned on only upon double click
-        el.innerText = content;
-        el.id = 'text_' + (textIdCounter++);
-        
-        el.dataset.size = size;
-        el.dataset.color = color;
-        el.dataset.weight = weight;
-        
+        el.className = 'pro-text'; el.innerText = content;
+        el.dataset.size = size; el.dataset.color = color; el.dataset.weight = weight;
         updateElementStyle(el);
-        
-        // Initial center positioning
         const rect = canvas.getBoundingClientRect();
-        const scaleX = rect.width / canvas.width;
-        el.style.left = ((x * scaleX) - 50) + 'px'; 
-        el.style.top = (y * (rect.height / canvas.height)) + 'px';
-        
-        setupTextEvents(el);
-        wrapper.appendChild(el);
-        selectElement(el);
+        const scale = rect.width / canvas.width;
+        el.style.left = ((x * scale) - 50) + 'px'; el.style.top = (y * (rect.height / canvas.height)) + 'px';
+        setupTextEvents(el); wrapper.appendChild(el); selectElement(el);
     }
 
     function updateElementStyle(el) {
         const rect = canvas.getBoundingClientRect();
         const scale = rect.width / canvas.width;
-        
         el.style.fontSize = (parseFloat(el.dataset.size) * scale) + 'px';
-        el.style.color = el.dataset.color;
-        el.style.fontWeight = el.dataset.weight;
+        el.style.color = el.dataset.color; el.style.fontWeight = el.dataset.weight;
         el.style.fontFamily = 'Arial, sans-serif';
     }
 
-    // --- DRAG, DROP & EDIT TEXT ---
     function setupTextEvents(el) {
         let isDragging = false, dragStartX, dragStartY;
-
-        // Double click to edit text content
-        el.addEventListener('dblclick', function(e) {
+        el.addEventListener('dblclick', function() {
             if(currentMode !== 'select') return;
-            el.contentEditable = true;
-            el.focus();
-            el.style.cursor = 'text';
-            document.execCommand('selectAll', false, null); // Select all text automatically
+            el.contentEditable = true; el.focus();
+            document.execCommand('selectAll', false, null);
         });
-
-        el.addEventListener('blur', function() {
-            el.contentEditable = false;
-            el.style.cursor = 'grab';
-            if(el.innerText.trim() === '') el.remove(); // Delete if empty
-        });
-
-        // Mouse Down for dragging
-        el.addEventListener('mousedown', function(e) {
+        el.addEventListener('blur', function() { el.contentEditable = false; if(el.innerText.trim() === '') el.remove(); });
+        
+        const startDrag = (e) => {
             if(currentMode !== 'select' || el.contentEditable === "true") return;
-            selectElement(el);
-            isDragging = true;
-            el.style.cursor = 'grabbing';
+            selectElement(el); isDragging = true;
             const rect = wrapper.getBoundingClientRect();
-            dragStartX = e.clientX - el.offsetLeft - rect.left;
-            e.stopPropagation();
-        });
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            dragStartX = clientX - el.offsetLeft - rect.left;
+            dragStartY = clientY - el.offsetTop - rect.top;
+            if(!e.touches) e.stopPropagation();
+        };
+        el.addEventListener('mousedown', startDrag);
+        el.addEventListener('touchstart', startDrag, {passive: false});
 
-        // Touch Start for dragging
-        el.addEventListener('touchstart', function(e) {
-            if(currentMode !== 'select' || el.contentEditable === "true") return;
-            selectElement(el);
-            isDragging = true;
-            const rect = wrapper.getBoundingClientRect();
-            dragStartX = e.touches[0].clientX - el.offsetLeft - rect.left;
-            dragStartY = e.touches[0].clientY - el.offsetTop - rect.top;
-            e.stopPropagation();
-        }, {passive: false});
-
-        function moveHandler(clientX, clientY) {
+        const moveHandler = (clientX, clientY) => {
             if (!isDragging) return;
             const rect = wrapper.getBoundingClientRect();
-            let newX = clientX - rect.left - dragStartX;
-            let newY = clientY - rect.top - (dragStartY || (clientY - el.offsetTop - rect.top)); // Fallback for mouse Y offset
-            
-            el.style.left = newX + 'px';
-            el.style.top = newY + 'px';
-        }
-
+            el.style.left = (clientX - rect.left - dragStartX) + 'px';
+            el.style.top = (clientY - rect.top - dragStartY) + 'px';
+        };
         document.addEventListener('mousemove', e => moveHandler(e.clientX, e.clientY));
-        document.addEventListener('touchmove', e => {
-            if(isDragging) { e.preventDefault(); moveHandler(e.touches[0].clientX, e.touches[0].clientY); }
-        }, {passive: false});
-
-        function upHandler() { 
-            isDragging = false; 
-            if(el.contentEditable === "false") el.style.cursor = 'grab';
-        }
-        document.addEventListener('mouseup', upHandler);
-        document.addEventListener('touchend', upHandler);
+        document.addEventListener('touchmove', e => { if(isDragging) { e.preventDefault(); moveHandler(e.touches[0].clientX, e.touches[0].clientY); } }, {passive: false});
+        document.addEventListener('mouseup', () => isDragging = false);
+        document.addEventListener('touchend', () => isDragging = false);
     }
 
-    // --- SELECTION & PROPERTIES PANEL ---
     function selectElement(el) {
-        deselectAll();
-        selectedElement = el;
-        selectedElement.classList.add('selected');
-        
-        // Show and populate properties panel
+        deselectAll(); selectedElement = el; selectedElement.classList.add('selected');
         textPropsPanel.style.display = 'block';
         document.getElementById('propColor').value = el.dataset.color;
         document.getElementById('propSize').value = el.dataset.size;
         document.getElementById('propWeight').value = el.dataset.weight;
     }
-
     function deselectAll() {
-        if(selectedElement) {
-            selectedElement.classList.remove('selected');
-            selectedElement.contentEditable = false;
-        }
-        selectedElement = null;
-        textPropsPanel.style.display = 'none';
+        if(selectedElement) { selectedElement.classList.remove('selected'); selectedElement.contentEditable = false; }
+        selectedElement = null; textPropsPanel.style.display = 'none';
     }
-
-    // Deselect if clicked outside
     wrapper.addEventListener('mousedown', (e) => { if(e.target === canvas && currentMode === 'select') deselectAll(); });
-    wrapper.addEventListener('touchstart', (e) => { if(e.target === canvas && currentMode === 'select') deselectAll(); });
 
-    // Properties Panel Events
-    document.getElementById('propColor').addEventListener('input', function() {
-        if(selectedElement) { selectedElement.dataset.color = this.value; updateElementStyle(selectedElement); }
-    });
-    document.getElementById('propSize').addEventListener('input', function() {
-        if(selectedElement) { selectedElement.dataset.size = this.value; updateElementStyle(selectedElement); }
-    });
-    document.getElementById('propWeight').addEventListener('change', function() {
-        if(selectedElement) { selectedElement.dataset.weight = this.value; updateElementStyle(selectedElement); }
-    });
-    document.getElementById('deleteTextBtn').addEventListener('click', function() {
-        if(selectedElement) { selectedElement.remove(); deselectAll(); }
-    });
+    document.getElementById('propColor').addEventListener('input', function() { if(selectedElement) { selectedElement.dataset.color = this.value; updateElementStyle(selectedElement); } });
+    document.getElementById('propSize').addEventListener('input', function() { if(selectedElement) { selectedElement.dataset.size = this.value; updateElementStyle(selectedElement); } });
+    document.getElementById('propWeight').addEventListener('change', function() { if(selectedElement) { selectedElement.dataset.weight = this.value; updateElementStyle(selectedElement); } });
+    document.getElementById('deleteTextBtn').addEventListener('click', function() { if(selectedElement) { selectedElement.remove(); deselectAll(); } });
+    document.addEventListener('keydown', function(e) { if (selectedElement && selectedElement.contentEditable === "false" && (e.key === 'Delete' || e.key === 'Backspace')) { selectedElement.remove(); deselectAll(); } });
+    window.addEventListener('resize', () => document.querySelectorAll('.pro-text').forEach(el => updateElementStyle(el)));
 
-    // Keyboard Delete
-    document.addEventListener('keydown', function(e) {
-        if (selectedElement && selectedElement.contentEditable === "false" && (e.key === 'Delete' || e.key === 'Backspace')) {
-            selectedElement.remove(); deselectAll();
-        }
-    });
-
-    // Handle Window Resize to keep text scaled
-    window.addEventListener('resize', () => {
-        document.querySelectorAll('.pro-text').forEach(el => updateElementStyle(el));
-    });
-
-    // --- SMART ERASER TOOL (Background color auto-fill) ---
-    function getAverageEdgeColor(x, y, w, h) {
-        try {
-            const imgData = ctx.getImageData(x, y, w, h).data;
-            let r=0, g=0, b=0, count=0;
-            for (let i = 0; i < imgData.length; i += 4) {
-                let px = (i / 4) % w, py = Math.floor((i / 4) / w);
-                if (px < 3 || px > w - 3 || py < 3 || py > h - 3) {
-                    r += imgData[i]; g += imgData[i+1]; b += imgData[i+2]; count++;
-                }
-            }
-            return count === 0 ? '#ffffff' : `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
-        } catch(e) { return '#ffffff'; }
-    }
-
+    // --- ERASER TOOL ---
     function getCanvasCoords(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+        return { x: (clientX - rect.left) * (canvas.width / rect.width), y: (clientY - rect.top) * (canvas.height / rect.height) };
     }
-
-    canvas.addEventListener('mousedown', startDraw);
-    canvas.addEventListener('touchstart', startDraw, {passive: false});
-
-    function startDraw(e) {
+    const startErase = (e) => {
         if(currentMode !== 'erase' || !img.src) return;
         if(e.touches) e.preventDefault();
-        const pos = getCanvasCoords(e);
-        startX = pos.x; startY = pos.y;
-        isDrawing = true;
+        const pos = getCanvasCoords(e); startX = pos.x; startY = pos.y; isDrawing = true;
         savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    }
-
-    canvas.addEventListener('mousemove', drawMove);
-    canvas.addEventListener('touchmove', drawMove, {passive: false});
-
-    function drawMove(e) {
+    };
+    canvas.addEventListener('mousedown', startErase);
+    canvas.addEventListener('touchstart', startErase, {passive: false});
+    const drawErase = (e) => {
         if (!isDrawing || currentMode !== 'erase') return;
         if(e.touches) e.preventDefault();
-        const pos = getCanvasCoords(e);
-        ctx.putImageData(savedImageData, 0, 0);
+        const pos = getCanvasCoords(e); ctx.putImageData(savedImageData, 0, 0);
         ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
         ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
-    }
-
-    canvas.addEventListener('mouseup', endDraw);
-    canvas.addEventListener('touchend', endDraw);
-
-    function endDraw(e) {
-        if (!isDrawing || currentMode !== 'erase') return;
-        isDrawing = false;
-        
+    };
+    canvas.addEventListener('mousemove', drawErase);
+    canvas.addEventListener('touchmove', drawErase, {passive: false});
+    const endErase = (e) => {
+        if (!isDrawing || currentMode !== 'erase') return; isDrawing = false;
         const pos = e.changedTouches ? getCanvasCoords({touches: e.changedTouches}) : getCanvasCoords(e);
         let x = Math.min(startX, pos.x), y = Math.min(startY, pos.y);
         let w = Math.abs(pos.x - startX), h = Math.abs(pos.y - startY);
-
         if (w < 10 || h < 10) { ctx.putImageData(savedImageData, 0, 0); return; }
         ctx.putImageData(savedImageData, 0, 0); 
-        
-        // Fill box with smart background color
-        ctx.fillStyle = getAverageEdgeColor(x, y, w, h);
-        ctx.fillRect(x, y, w, h);
-        
-        // Auto-switch to select mode and add text box right over erased area
-        setMode('select');
-        createNewText("New Text", x + 5, y + 5, 24, "#000000", "bold");
-    }
+        const imgData = ctx.getImageData(x, y, w, h).data;
+        let r=0, g=0, b=0, c=0;
+        for (let i=0; i<imgData.length; i+=4) { r+=imgData[i]; g+=imgData[i+1]; b+=imgData[i+2]; c++; }
+        ctx.fillStyle = `rgb(${Math.round(r/c)}, ${Math.round(g/c)}, ${Math.round(b/c)})`;
+        ctx.fillRect(x, y, w, h); setMode('select');
+        createNewText("New Text", x + w/2, y + h/2, 24, "#000000", "bold");
+    };
+    canvas.addEventListener('mouseup', endErase);
+    canvas.addEventListener('touchend', endErase);
 
-    // --- EXPORT IMAGE ---
+    // --- FINAL EXPORT ---
     document.getElementById('downloadBtn').addEventListener('click', function() {
         if(!img.src) { alert("No image to export!"); return; }
         deselectAll();
-
         const finalCanvas = document.createElement('canvas');
         finalCanvas.width = canvas.width; finalCanvas.height = canvas.height;
         const finalCtx = finalCanvas.getContext('2d');
-        
         finalCtx.drawImage(canvas, 0, 0);
-        
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-
+        const scaleX = canvas.width / canvas.getBoundingClientRect().width;
+        const scaleY = canvas.height / canvas.getBoundingClientRect().height;
         document.querySelectorAll('.pro-text').forEach(el => {
-            const x = el.offsetLeft * scaleX;
-            const y = el.offsetTop * scaleY;
+            const x = el.offsetLeft * scaleX, y = el.offsetTop * scaleY;
             const size = parseFloat(el.dataset.size);
-            
             finalCtx.font = `${el.dataset.weight} ${size}px Arial, sans-serif`;
-            finalCtx.fillStyle = el.dataset.color;
-            finalCtx.textBaseline = 'top';
-            
-            // Handle multi-line text export
-            const lines = el.innerText.split('\n');
-            lines.forEach((line, index) => {
-                finalCtx.fillText(line, x, y + (index * size * 1.2)); // 1.2 is line-height approximation
-            });
+            finalCtx.fillStyle = el.dataset.color; finalCtx.textBaseline = 'top';
+            el.innerText.split('\n').forEach((line, i) => finalCtx.fillText(line, x, y + (i * size * 1.2)));
         });
-
-        const link = document.createElement('a');
-        link.download = originalFileName;
-        link.href = finalCanvas.toDataURL("image/png");
-        link.click();
+        const link = document.createElement('a'); link.download = originalFileName;
+        link.href = finalCanvas.toDataURL("image/png"); link.click();
     });
 </script>
 
