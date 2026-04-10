@@ -3,248 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAITYA - Premium PDF Editor</title>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+    <title>DAITYA Image Text Editor</title>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
     <style>
-        :root {
-            --bg-color: #f4f7f6;
-            --surface: #ffffff;
-            --primary: #4361ee;
-            --primary-hover: #3a53d0;
-            --text-dark: #2b2d42;
-            --text-muted: #8d99ae;
-            --border: #e2e8f0;
-            --success: #10b981;
-            --danger: #ef4444;
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-dark);
-            margin: 0;
-            padding: 40px 20px;
-        }
-
-        .app-container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: var(--surface);
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            padding: 30px;
-            border: 1px solid var(--border);
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            color: var(--primary);
-            margin: 0 0 10px 0;
-            font-weight: 700;
-        }
-
-        .header p {
-            color: var(--text-muted);
-            margin: 0;
-            font-size: 15px;
-        }
-
-        .upload-section {
-            border: 2px dashed var(--border);
-            padding: 30px;
-            text-align: center;
-            border-radius: 12px;
-            background: #f8fafc;
-            margin-bottom: 25px;
-            transition: 0.3s;
-        }
+        :root { --primary: #2563eb; --primary-hover: #1d4ed8; --bg: #f3f4f6; --surface: #ffffff; --border: #e5e7eb; --text: #1f2937; --text-muted: #6b7280; }
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: var(--surface); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03); padding: 30px; border: 1px solid var(--border); }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: var(--primary); margin: 0 0 10px 0; font-weight: 800; }
+        .header p { color: var(--text-muted); margin: 0; font-size: 15px; }
         
-        .upload-section:hover {
-            border-color: var(--primary);
-            background: #f0f4ff;
-        }
+        .upload-section { border: 2px dashed var(--border); padding: 30px; text-align: center; border-radius: 12px; background: #f9fafb; margin-bottom: 25px; cursor: pointer; transition: 0.3s; }
+        .upload-section:hover { border-color: var(--primary); background: #eff6ff; }
+        input[type="file"] { font-size: 15px; }
 
-        input[type="file"] {
-            font-size: 16px;
-            color: var(--text-dark);
-        }
+        .editor-panels { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+        .control-panel { background: #f9fafb; padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+        .control-panel h3 { margin-top: 0; color: var(--text); }
+        
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .input-group label { font-size: 13px; font-weight: 600; color: var(--text); }
+        input[type="text"] { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s; }
+        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
-        .editor-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-        }
+        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
 
-        .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        #status { text-align: center; padding: 15px; border-radius: 8px; background: #fff3cd; color: #856404; font-weight: 600; margin-bottom: 20px; display: none; }
+        
+        .result-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #e5e7eb; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+        canvas { max-width: 100%; height: auto; display: block; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); }
 
-        .input-group label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-dark);
-        }
-
-        input[type="number"], input[type="text"] {
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-            transition: 0.2s;
-        }
-
-        input[type="number"]:focus, input[type="text"]:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-        }
-
-        .full-width {
-            grid-column: span 2;
-        }
-
-        .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            background: var(--primary-hover);
-            transform: translateY(-1px);
-        }
-
-        .btn:disabled {
-            background: #cbd5e1;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-success {
-            background: var(--success);
-            width: 100%;
-            margin-top: 10px;
-            font-size: 16px;
-            padding: 16px;
-        }
-
-        .btn-success:hover { background: #059669; }
-
-        #status {
-            text-align: center;
-            padding: 15px;
-            border-radius: 8px;
-            background: #fff3cd;
-            color: #856404;
-            font-weight: 600;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        iframe {
-            width: 100%;
-            height: 650px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-top: 20px;
-            background: #e2e8f0;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .editor-grid { grid-template-columns: 1fr; }
-            .full-width { grid-column: span 1; }
-        }
+        @media (max-width: 768px) { .editor-panels { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 
-    <div class="app-container">
+    <div class="container">
         <div class="header">
-            <h1>DAITYA Editor Pro</h1>
-            <p>Advanced PDF Text Replacement & Masking Tool (Hindi/English Support)</p>
+            <h1>DAITYA Image Text Replacer</h1>
+            <p>Advanced Client-Side Bypass for Photo Text Modification (OCR + Canvas In-Painting)</p>
         </div>
 
-        <div id="status">Initializing... Downloading Required Fonts...</div>
+        <div id="status">Initializing... Please upload an image.</div>
 
         <div class="upload-section">
-            <input type="file" id="uploadPdf" accept="application/pdf" />
+            <input type="file" id="uploadImage" accept="image/*" />
         </div>
 
-        <div class="editor-grid">
-            <div class="full-width">
-                <h3 style="margin-top:0; color: var(--text-dark);">Masking & Replacement Settings</h3>
-                <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Set coordinates to cover old text with a white box, then inject your new text.</p>
-            </div>
-
-            <div class="input-group">
-                <label>X Coordinate (Left to Right)</label>
-                <input type="number" id="posX" value="100">
-            </div>
-            <div class="input-group">
-                <label>Y Coordinate (Bottom to Top)</label>
-                <input type="number" id="posY" value="500">
-            </div>
-            <div class="input-group">
-                <label>Mask Width (To hide old text)</label>
-                <input type="number" id="boxW" value="150">
-            </div>
-            <div class="input-group">
-                <label>Mask Height</label>
-                <input type="number" id="boxH" value="20">
-            </div>
-
-            <div class="input-group full-width">
-                <label>New Text (Hindi or English)</label>
-                <input type="text" id="newText" value="नया टेक्स्ट यहाँ लिखें">
-            </div>
-            
-            <div class="input-group">
-                <label>Font Size</label>
-                <input type="number" id="fontSize" value="14">
-            </div>
-
-            <div class="input-group" style="justify-content: flex-end;">
-                <button class="btn" id="btnReplace" onclick="maskAndReplace()" disabled>
-                    ⟳ Inject Text
+        <div class="editor-panels">
+            <div class="control-panel">
+                <h3>Replacement Rules</h3>
+                <div class="input-group">
+                    <label>Existing Text (Exact Match)</label>
+                    <input type="text" id="oldText" placeholder="e.g. STOP">
+                </div>
+                <div class="input-group">
+                    <label>Replacement Text</label>
+                    <input type="text" id="newText" placeholder="e.g. GO NOW">
+                </div>
+                <button class="btn" id="btnReplace" onclick="processTextReplacement()" disabled>
+                    ⟳ Execute Replace
                 </button>
             </div>
+            
+            <div class="result-panel">
+                <canvas id="outputCanvas"></canvas>
+            </div>
         </div>
-
-        <button class="btn btn-success" id="btnDownload" onclick="downloadPdf()" disabled>
-            ↓ Download Edited PDF
-        </button>
-
-        <iframe id="pdfViewer"></iframe>
     </div>
 
     <script>
-        let currentPdfBytes = null;
-        let hindiFontBytes = null;
-        const { PDFDocument, rgb } = PDFLib;
+        let currentImage = null;
         const statusEl = document.getElementById('status');
+        const canvas = document.getElementById('outputCanvas');
+        const ctx = canvas.getContext('2d');
 
         function showStatus(msg, isError = false) {
             statusEl.style.display = 'block';
@@ -253,87 +87,111 @@
             statusEl.style.color = isError ? '#721c24' : '#155724';
         }
 
-        // Load Hindi Font on startup
-        async function loadHindiFont() {
-            try {
-                showStatus('Downloading Language Module (Hindi Font)...');
-                const url = 'https://raw.githubusercontent.com/google/fonts/main/ofl/hind/Hind-Regular.ttf';
-                const response = await fetch(url);
-                hindiFontBytes = await response.arrayBuffer();
-                showStatus('System Ready. Please upload a PDF file.');
-            } catch (err) {
-                showStatus('Failed to load font. Check internet connection.', true);
-            }
-        }
-
-        window.onload = loadHindiFont;
-
-        // Handle File Upload
-        document.getElementById('uploadPdf').addEventListener('change', async (e) => {
+        // Handle Image Upload
+        document.getElementById('uploadImage').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                showStatus('Processing PDF...');
-                currentPdfBytes = await file.arrayBuffer();
-                document.getElementById('btnReplace').disabled = false;
-                document.getElementById('btnDownload').disabled = false;
-                showStatus('PDF Loaded successfully! Set your coordinates and replace text.');
-                displayPdf(currentPdfBytes);
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentImage = new Image();
+                    currentImage.onload = function() {
+                        canvas.width = currentImage.width;
+                        canvas.height = currentImage.height;
+                        ctx.drawImage(currentImage, 0, 0);
+                        showStatus('Image loaded. Enter the text to replace and its replacement.');
+                        document.getElementById('btnReplace').disabled = false;
+                    };
+                    currentImage.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
             }
         });
 
-        // Mask and Replace Logic
-        async function maskAndReplace() {
-            if (!currentPdfBytes || !hindiFontBytes) return;
+        // The Bypass Logic: OCR + Canvas Masking + Redraw
+        async function processTextReplacement() {
+            if (!currentImage) return;
+            const oldTextTarget = document.getElementById('oldText').value.trim();
+            const newTextData = document.getElementById('newText').value;
+
+            if (!oldTextTarget || oldTextTarget === "") {
+                showStatus('Error: Specify the existing text to replace.', true);
+                return;
+            }
 
             try {
-                showStatus('Applying changes...');
-                const pdfDoc = await PDFDocument.load(currentPdfBytes);
-                pdfDoc.registerFontkit(window.fontkit);
-                const customFont = await pdfDoc.embedFont(hindiFontBytes);
-                
-                const pages = pdfDoc.getPages();
-                const targetPage = pages[0]; 
-                
-                const x = parseFloat(document.getElementById('posX').value);
-                const y = parseFloat(document.getElementById('posY').value);
-                const w = parseFloat(document.getElementById('boxW').value);
-                const h = parseFloat(document.getElementById('boxH').value);
-                const text = document.getElementById('newText').value;
-                const fSize = parseFloat(document.getElementById('fontSize').value);
+                showStatus('Analyzing image with Tesseract.js (OCR)...');
+                document.getElementById('btnReplace').disabled = true;
 
-                // 1. Draw White Mask
-                targetPage.drawRectangle({
-                    x: x, y: y, width: w, height: h, color: rgb(1, 1, 1),
-                });
+                // Step 1: Perform OCR
+                const { data: { words } } = await Tesseract.recognize(
+                    canvas,
+                    'eng', // Default to English; can expand for multi-lang
+                    { logger: m => console.log(m) } // Keep progress in console
+                );
 
-                // 2. Draw New Text
-                targetPage.drawText(text, {
-                    x: x + 2, y: y + 4, size: fSize, font: customFont, color: rgb(0, 0, 0),
-                });
+                // Step 2: Find the matching text bounding box
+                const targetWord = words.find(w => w.text.toLowerCase() === oldTextTarget.toLowerCase());
 
-                currentPdfBytes = await pdfDoc.save();
-                showStatus('Text injected successfully! Preview updated.');
-                displayPdf(currentPdfBytes);
+                if (!targetWord) {
+                    showStatus(`Error: Text "${oldTextTarget}" not found in image. Try exactly.`, true);
+                    document.getElementById('btnReplace').disabled = false;
+                    return;
+                }
+
+                showStatus(`Text found! Executing replacement bypass...`);
+                const { x0, y0, x1, y1 } = targetWord.bbox;
+                const width = x1 - x0;
+                const height = y1 - y0;
+
+                // Step 3: Rudimentary In-Painting (The Bypass)
+                // We calculate the average color of the pixels SURROUNDING the text to make a mask.
+                // It's a client-side hack for advanced background in-painting.
+                const padding = 10;
+                const maskRect = {
+                    x: Math.max(0, x0 - padding),
+                    y: Math.max(0, y0 - padding),
+                    w: width + (padding * 2),
+                    h: height + (padding * 2)
+                };
+
+                const imageData = ctx.getImageData(maskRect.x, maskRect.y, maskRect.w, maskRect.h).data;
+                let r=0, g=0, b=0, count=0;
+                for (let i = 0; i < imageData.length; i += 4) {
+                    r += imageData[i];
+                    g += imageData[i+1];
+                    b += imageData[i+2];
+                    count++;
+                }
+                const avgColor = `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
+
+                // Draw the mask (fill the bounding box with the average color)
+                ctx.fillStyle = avgColor;
+                ctx.fillRect(x0, y0, width, height);
+
+                // Step 4: Redraw New Text
+                // Guess font style/color from OCR results if needed, or default
+                const guessedColor = getBestTextColor(avgColor); // Basic logic for readable text
+                ctx.font = `bold ${height}px 'Segoe UI', system-ui, sans-serif`;
+                ctx.fillStyle = guessedColor;
+                ctx.textBaseline = 'top';
+                ctx.fillText(newTextData, x0, y0);
+
+                showStatus(`SUCCESS: Text replaced with "${newTextData}" on canvas.`);
+                document.getElementById('btnReplace').disabled = false;
+
             } catch (err) {
-                showStatus('Error applying changes: ' + err.message, true);
+                showStatus('Error processing text replacement: ' + err.message, true);
+                document.getElementById('btnReplace').disabled = false;
             }
         }
 
-        // Handle Download
-        function downloadPdf() {
-            if (!currentPdfBytes) return;
-            const blob = new Blob([currentPdfBytes], { type: "application/pdf" });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = "Daitya_Pro_Edited.pdf";
-            link.click();
-            showStatus('File downloaded successfully!');
-        }
-
-        // Live Preview
-        function displayPdf(pdfBytes) {
-            const blob = new Blob([pdfBytes], { type: "application/pdf" });
-            document.getElementById('pdfViewer').src = URL.createObjectURL(blob);
+        function getBestTextColor(backgroundColor) {
+            // Very simple color check: if background is too dark, use white; else use black.
+            const rgb = backgroundColor.match(/\d+/g);
+            const brightness = Math.round(((parseInt(rgb[0]) * 299) +
+                                           (parseInt(rgb[1]) * 587) +
+                                           (parseInt(rgb[2]) * 114)) / 1000);
+            return (brightness > 125) ? 'black' : 'white';
         }
     </script>
 </body>
