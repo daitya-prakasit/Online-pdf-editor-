@@ -3,216 +3,269 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAITYA - Image Text Editor (Pro Version)</title>
+    <title>DAITYA - Ultimate WYSIWYG Image Text Editor</title>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@600&display=swap" rel="stylesheet">
     <style>
-        :root { --primary: #8b5cf6; --primary-hover: #7c3aed; --success: #10b981; --success-hover: #059669; --bg: #0f172a; --surface: #1e293b; --border: #334155; --text: #f8fafc; --text-muted: #94a3b8; }
-        body { font-family: 'Inter', system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 40px 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: var(--surface); border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); padding: 30px; border: 1px solid var(--border); }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { color: var(--primary); margin: 0 0 10px 0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .header p { color: var(--text-muted); margin: 0; font-size: 14px; }
+        :root { --primary: #06b6d4; --primary-hover: #0891b2; --bg: #09090b; --panel: #18181b; --border: #27272a; --text: #fafafa; }
+        body { font-family: 'Hind', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h1 { color: var(--primary); margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 2px; }
+        .header p { color: #a1a1aa; margin: 0; font-size: 14px; }
         
-        .upload-section { border: 2px dashed var(--border); padding: 30px; text-align: center; border-radius: 12px; background: #0f172a; margin-bottom: 25px; cursor: pointer; transition: 0.3s; }
-        .upload-section:hover { border-color: var(--primary); }
-        input[type="file"] { font-size: 15px; color: var(--text); }
-
-        .editor-panels { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .control-panel { background: #0f172a; padding: 20px; border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; }
-        .control-panel h3 { margin-top: 0; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px;}
+        .toolbar { background: var(--panel); border: 1px solid var(--border); padding: 15px 25px; border-radius: 12px; display: flex; gap: 20px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .tool-group { display: flex; align-items: center; gap: 10px; }
+        .tool-group label { font-size: 13px; color: #a1a1aa; font-weight: bold; }
         
-        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-        .input-group label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
-        input[type="text"] { padding: 12px; background: #1e293b; color: white; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; transition: 0.2s; font-family: inherit;}
-        input[type="text"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2); }
-
-        .btn { background: var(--primary); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; margin-bottom: 10px;}
-        .btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
-        .btn:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; transform: none; }
+        input[type="file"] { color: var(--text); font-size: 14px; cursor: pointer; }
+        input[type="color"] { background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; height: 35px; width: 50px; padding: 2px; }
+        input[type="number"] { background: #27272a; color: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px; width: 70px; outline: none; font-family: inherit;}
         
-        .btn-success { background: var(--success); }
-        .btn-success:hover { background: var(--success-hover); }
+        button { background: var(--primary); color: #000; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-family: inherit; }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button:disabled { background: #3f3f46; color: #71717a; cursor: not-allowed; transform: none; }
+        .btn-green { background: #22c55e; color: white; }
+        .btn-green:hover { background: #16a34a; }
 
-        #status { text-align: center; padding: 15px; border-radius: 8px; background: #020617; color: #10b981; font-weight: bold; margin-bottom: 20px; display: none; font-size: 13px; border: 1px solid #10b981;}
+        #status { background: #18181b; border: 1px solid var(--primary); color: var(--primary); padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 20px; width: 100%; max-width: 800px; text-align: center; }
         
-        .result-panel { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #000; min-height: 400px; display: flex; align-items: center; justify-content: center; position: relative;}
-        canvas { max-width: 100%; height: auto; display: block; }
-
-        .color-preview-box { display: flex; gap: 10px; margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); margin-bottom: 15px;}
-        .color-sample { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border); }
-        .color-label { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px; font-weight: bold;}
-
-        @media (max-width: 768px) { .editor-panels { grid-template-columns: 1fr; } }
+        .canvas-container-wrapper { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        
+        .instructions { max-width: 800px; margin-top: 20px; background: var(--panel); padding: 15px; border-radius: 8px; font-size: 13px; color: #a1a1aa; border: 1px solid var(--border); }
+        .instructions span { color: var(--primary); font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="header">
-            <h1>DAITYA Execution Terminal</h1>
-            <p>Module: Deep OCR | Exact Color Match | Dynamic Size | Output Downloader</p>
-        </div>
+    <div class="header">
+        <h1>DAITYA WYSIWYG Engine</h1>
+        <p>Interactive Selection | Drag & Drop | Live Edit | Multi-Language</p>
+    </div>
 
-        <div id="status">> System initialized. Waiting for payload (Image).</div>
+    <div id="status">> System Ready. Upload an image to begin scanning.</div>
 
-        <div class="upload-section">
+    <div class="toolbar">
+        <div class="tool-group" style="border-right: 1px solid var(--border); padding-right: 20px;">
             <input type="file" id="uploadImage" accept="image/*" />
         </div>
-
-        <div class="editor-panels">
-            <div class="control-panel">
-                <h3>Replacement Parameters</h3>
-                <div class="input-group">
-                    <label>Target Text (Exact Match)</label>
-                    <input type="text" id="oldText" placeholder="e.g. TARGET">
-                </div>
-                <div class="input-group">
-                    <label>Injection Text</label>
-                    <input type="text" id="newText" placeholder="e.g. BYPASS">
-                </div>
-                
-                <button class="btn" id="btnReplace" onclick="processTextReplacement()" disabled>
-                    [ EXECUTE OVERRIDE ]
-                </button>
-
-                <div class="color-preview-box">
-                    <div>
-                        <div id="sampleBackground" class="color-sample" style="background: #000;"></div>
-                        <div class="color-label">BG MASK</div>
-                    </div>
-                    <div>
-                        <div id="sampleText" class="color-sample" style="background: #fff;"></div>
-                        <div class="color-label">TEXT HEX</div>
-                    </div>
-                </div>
-
-                <button class="btn btn-success" id="btnDownload" onclick="downloadImage()" disabled>
-                    [ DOWNLOAD OUTPUT ]
-                </button>
-            </div>
-            
-            <div class="result-panel">
-                <canvas id="outputCanvas"></canvas>
-            </div>
+        
+        <div class="tool-group">
+            <label>Color</label>
+            <input type="color" id="textColor" value="#ffffff" disabled>
         </div>
+        
+        <div class="tool-group">
+            <label>Size</label>
+            <input type="number" id="textSize" value="20" min="5" max="200" disabled>
+        </div>
+
+        <button id="btnDelete" onclick="deleteSelected()" disabled style="background: #ef4444; color: white;">Delete Selected</button>
+        <button class="btn-green" id="btnDownload" onclick="downloadImage()" disabled style="margin-left: auto;">[ DOWNLOAD HD ]</button>
+    </div>
+
+    <div class="canvas-container-wrapper">
+        <canvas id="editorCanvas"></canvas>
+    </div>
+
+    <div class="instructions">
+        <span>HOW TO USE:</span><br>
+        1. Upload an image. Wait for the OCR scan to complete.<br>
+        2. Detected words will have a <span>dashed green box</span> around them.<br>
+        3. <span>Click on any dashed box</span> to unlock it. The system will mask the original text and give you an editable object.<br>
+        4. <span>Double-Click</span> the unlocked text to type your own (Hindi/English).<br>
+        5. Drag it anywhere. Change its color and size from the top panel.
     </div>
 
     <script>
-        let currentImage = null;
-        let originalCanvas = null; 
         const statusEl = document.getElementById('status');
-        const canvas = document.getElementById('outputCanvas');
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let canvas = new fabric.Canvas('editorCanvas', { selection: true });
+        let originalImageElement = null; 
+        let tempCanvasContext = null;
 
         function logStatus(msg) {
-            statusEl.style.display = 'block';
             statusEl.innerText = '> ' + msg;
         }
 
-        // Image Upload Handler
+        // --- UI Listeners for Live Editing ---
+        document.getElementById('textColor').addEventListener('input', function(e) {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj.type === 'i-text') {
+                activeObj.set('fill', e.target.value);
+                canvas.renderAll();
+            }
+        });
+
+        document.getElementById('textSize').addEventListener('input', function(e) {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && activeObj.type === 'i-text') {
+                activeObj.set('fontSize', parseInt(e.target.value));
+                canvas.renderAll();
+            }
+        });
+
+        function enableTools(enable) {
+            document.getElementById('textColor').disabled = !enable;
+            document.getElementById('textSize').disabled = !enable;
+            document.getElementById('btnDelete').disabled = !enable;
+        }
+
+        function deleteSelected() {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                canvas.remove(activeObj);
+                enableTools(false);
+            }
+        }
+
+        // Event: When user selects a text object, update UI panel
+        canvas.on('selection:created', handleSelection);
+        canvas.on('selection:updated', handleSelection);
+        canvas.on('selection:cleared', () => enableTools(false));
+
+        function handleSelection(e) {
+            const obj = e.selected[0];
+            if (obj && obj.type === 'i-text') {
+                enableTools(true);
+                document.getElementById('textColor').value = obj.fill || '#ffffff';
+                document.getElementById('textSize').value = obj.fontSize || 20;
+            } else {
+                enableTools(false);
+            }
+        }
+
+        // --- Core Image Upload & OCR ---
         document.getElementById('uploadImage').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(event) {
-                    currentImage = new Image();
-                    currentImage.onload = function() {
-                        canvas.width = currentImage.width;
-                        canvas.height = currentImage.height;
-                        ctx.drawImage(currentImage, 0, 0);
+                reader.onload = function(f) {
+                    fabric.Image.fromURL(f.target.result, function(img) {
+                        canvas.clear();
                         
-                        originalCanvas = document.createElement('canvas');
-                        originalCanvas.width = currentImage.width;
-                        originalCanvas.height = currentImage.height;
-                        originalCanvas.getContext('2d').drawImage(currentImage, 0, 0);
-
-                        logStatus('Image parsed into memory. Enter parameters.');
-                        document.getElementById('btnReplace').disabled = false;
-                        document.getElementById('btnDownload').disabled = false; // Enable download
-                    };
-                    currentImage.src = event.target.result;
+                        // Set canvas dimensions to match image
+                        canvas.setWidth(img.width);
+                        canvas.setHeight(img.height);
+                        
+                        // Set image as un-selectable background
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                        
+                        // Store raw image for pixel color extraction
+                        originalImageElement = new Image();
+                        originalImageElement.src = f.target.result;
+                        originalImageElement.onload = () => {
+                            let tempCanvas = document.createElement('canvas');
+                            tempCanvas.width = img.width;
+                            tempCanvas.height = img.height;
+                            tempCanvasContext = tempCanvas.getContext('2d', { willReadFrequently: true });
+                            tempCanvasContext.drawImage(originalImageElement, 0, 0);
+                            
+                            // Start OCR Scan
+                            scanImageForText(f.target.result);
+                        };
+                        
+                        document.getElementById('btnDownload').disabled = false;
+                    });
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // OCR and Replacement Logic
-        async function processTextReplacement() {
-            if (!currentImage || !originalCanvas) return;
-            const oldTextTarget = document.getElementById('oldText').value.trim();
-            const newTextData = document.getElementById('newText').value;
-
-            if (!oldTextTarget) {
-                logStatus('ERROR: Missing target text.');
-                return;
-            }
-
+        async function scanImageForText(imgData) {
+            logStatus('Scanning Image matrix with Deep OCR (Eng+Hin)... Please wait.');
             try {
-                ctx.drawImage(originalCanvas, 0, 0);
-                logStatus('Deploying OCR Engine...');
-                document.getElementById('btnReplace').disabled = true;
-
                 const { data: { words } } = await Tesseract.recognize(
-                    originalCanvas, 'eng', { logger: m => console.log(m.status) }
+                    imgData, 'eng+hin', { logger: m => console.log(m.progress) }
                 );
 
-                const targetWord = words.find(w => w.text.toLowerCase() === oldTextTarget.toLowerCase());
-
-                if (!targetWord) {
-                    logStatus(`ERROR: Target [${oldTextTarget}] not located in pixel matrix.`);
-                    document.getElementById('btnReplace').disabled = false;
-                    return;
-                }
-
-                logStatus(`Target locked. Executing color & dimensional analysis...`);
-                const bbox = targetWord.bbox;
-                const { x0, y0, x1, y1 } = bbox;
-                const width = x1 - x0;
-                const targetHeight = y1 - y0;
-
-                // Color Extraction
-                const { backgroundColor, textColor } = analyzeBBoxColors(bbox, originalCanvas);
-                document.getElementById('sampleBackground').style.background = backgroundColor;
-                document.getElementById('sampleText').style.background = textColor;
-
-                // Erase Old Text
-                ctx.fillStyle = backgroundColor;
-                const maskPadding = targetHeight * 0.1; 
-                ctx.fillRect(x0 - maskPadding, y0 - maskPadding, width + (maskPadding*2), targetHeight + (maskPadding*2));
-
-                // Dynamic Font Scaling
-                let fontSize = targetHeight; 
-                ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
-                
-                let metrics = ctx.measureText(newTextData);
-                let actualRenderedHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-                
-                if (actualRenderedHeight > 0) {
-                    let scaleFactor = targetHeight / actualRenderedHeight;
-                    fontSize = fontSize * scaleFactor * 0.85; 
-                }
-
-                // Inject Text
-                ctx.font = `bold ${fontSize}px 'Inter', sans-serif`;
-                ctx.fillStyle = textColor;
-                ctx.textBaseline = 'top';
-                ctx.fillText(newTextData, x0, y0 + (targetHeight * 0.05));
-
-                logStatus(`OVERRIDE COMPLETE. Injected [${newTextData}] at exact size & color.`);
-                document.getElementById('btnReplace').disabled = false;
-
+                words.forEach(word => {
+                    // Only process valid words
+                    if (word.text.trim().length > 0 && word.confidence > 50) {
+                        createOcrBox(word);
+                    }
+                });
+                logStatus('Scan Complete. Click on any green dashed box to unlock and edit it.');
             } catch (err) {
-                logStatus('CRITICAL ERROR: ' + err.message);
-                document.getElementById('btnReplace').disabled = false;
+                logStatus('OCR Error: ' + err.message);
             }
         }
 
-        // --- Core Functions ---
-        function analyzeBBoxColors(bbox, sourceCanvas) {
+        // Create interactive Dashed Box over detected words
+        function createOcrBox(word) {
+            const { x0, y0, x1, y1 } = word.bbox;
+            const width = x1 - x0;
+            const height = y1 - y0;
+
+            const rect = new fabric.Rect({
+                left: x0, top: y0, width: width, height: height,
+                fill: 'rgba(34, 197, 94, 0.1)', // Light green transparent
+                stroke: '#22c55e', strokeWidth: 2, strokeDashArray: [5, 5],
+                selectable: false, hoverCursor: 'pointer',
+                // Custom data
+                isOcrBox: true, ocrWord: word
+            });
+
+            // On mouse down over this box, convert it
+            rect.on('mousedown', function() {
+                unlockText(this);
+            });
+
+            canvas.add(rect);
+        }
+
+        // --- The Bypass: Convert OCR Box to Draggable Text ---
+        function unlockText(ocrBoxObj) {
+            const word = ocrBoxObj.ocrWord;
+            const { x0, y0, x1, y1 } = word.bbox;
+            const width = x1 - x0;
+            const height = y1 - y0;
+
+            logStatus(`Unlocking word: [${word.text}]... Analyzing colors...`);
+
+            // 1. Color Extraction
+            const { bgColorHex, textColorHex } = extractColorsFromPixels(word.bbox);
+
+            // 2. Remove the dashed box
+            canvas.remove(ocrBoxObj);
+
+            // 3. Create Permanent Background Mask (In-Paint)
+            // Expand slightly to cover anti-aliasing edges
+            const maskPadding = height * 0.15; 
+            const maskRect = new fabric.Rect({
+                left: x0 - maskPadding, top: y0 - maskPadding,
+                width: width + (maskPadding * 2), height: height + (maskPadding * 2),
+                fill: bgColorHex,
+                selectable: false, evented: false // Lock it to background
+            });
+            canvas.add(maskRect);
+            maskRect.sendToBack(); // Keep it behind text but above background image
+
+            // 4. Create Editable Fabric IText Object
+            const editableText = new fabric.IText(word.text, {
+                left: x0, top: y0,
+                fontSize: height * 0.85, // Scale adjustment for visual match
+                fontFamily: 'Hind',
+                fill: textColorHex,
+                fontWeight: 600,
+                editable: true,
+                cursorColor: '#06b6d4',
+                borderColor: '#06b6d4',
+                cornerColor: '#06b6d4',
+                transparentCorners: false
+            });
+
+            canvas.add(editableText);
+            canvas.setActiveObject(editableText);
+            editableText.bringToFront();
+            
+            logStatus('Word unlocked! You can now drag it, double-click to type, or change properties above.');
+        }
+
+        // --- Color Algorithms for Fabric ---
+        function extractColorsFromPixels(bbox) {
             const { x0, y0, x1, y1 } = bbox;
             const w = x1 - x0;
             const h = y1 - y0;
-            const tempCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
             
             const p = Math.max(2, Math.round(h * 0.4)); 
             const bgAreas = [
@@ -222,52 +275,59 @@
                 { x: x0, y: y1, w: w, h: p }
             ];
 
-            const bgAvg = calculateAverageColor(bgAreas, tempCtx);
-            const bgRGB = bgAvg.match(/\d+/g).map(Number);
-            const textData = tempCtx.getImageData(x0, y0, w, h).data;
-            const textRGB = getHighestContrastColor(textData, bgRGB);
-
-            return { backgroundColor: bgAvg, textColor: textRGB };
-        }
-
-        function calculateAverageColor(rects, context) {
             let r=0, g=0, b=0, count=0;
-            rects.forEach(rect => {
+            bgAreas.forEach(rect => {
                 if (rect.w > 0 && rect.h > 0) {
-                    const data = context.getImageData(rect.x, rect.y, rect.w, rect.h).data;
-                    for (let i = 0; i < data.length; i += 4) {
-                        r += data[i]; g += data[i+1]; b += data[i+2]; count++;
-                    }
+                    const data = tempCanvasContext.getImageData(rect.x, rect.y, rect.w, rect.h).data;
+                    for (let i = 0; i < data.length; i += 4) { r += data[i]; g += data[i+1]; b += data[i+2]; count++; }
                 }
             });
-            if (count === 0) return 'rgb(255,255,255)';
-            return `rgb(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)})`;
-        }
+            
+            const bgR = Math.round(r/count) || 255; 
+            const bgG = Math.round(g/count) || 255; 
+            const bgB = Math.round(b/count) || 255;
 
-        function getHighestContrastColor(pixels, bgColor) {
+            const textData = tempCanvasContext.getImageData(x0, y0, w, h).data;
             let maxContrast = [0,0,0];
             let maxDistance = -1;
-            for (let i = 0; i < pixels.length; i += 8) { 
-                const pr = pixels[i], pg = pixels[i+1], pb = pixels[i+2];
-                const distance = Math.sqrt(Math.pow(pr - bgColor[0], 2) + Math.pow(pg - bgColor[1], 2) + Math.pow(pb - bgColor[2], 2));
-                if (distance > maxDistance) {
-                    maxDistance = distance;
-                    maxContrast = [pr, pg, pb];
-                }
+            for (let i = 0; i < textData.length; i += 8) { 
+                const pr = textData[i], pg = textData[i+1], pb = textData[i+2];
+                const distance = Math.sqrt(Math.pow(pr - bgR, 2) + Math.pow(pg - bgG, 2) + Math.pow(pb - bgB, 2));
+                if (distance > maxDistance) { maxDistance = distance; maxContrast = [pr, pg, pb]; }
             }
-            if (maxDistance < 20) return `rgb(0,0,0)`; 
-            return `rgb(${maxContrast[0]}, ${maxContrast[1]}, ${maxContrast[2]})`;
+
+            return {
+                bgColorHex: rgbToHex(bgR, bgG, bgB),
+                textColorHex: maxDistance < 20 ? '#000000' : rgbToHex(maxContrast[0], maxContrast[1], maxContrast[2])
+            };
         }
 
-        // --- Download Execution ---
-        function downloadImage() {
-            if (!currentImage) return;
-            const link = document.createElement('a');
-            link.download = 'DAITYA_Output_Image.png';
-            link.href = canvas.toDataURL('image/png', 1.0); // 1.0 means Max Quality
-            link.click();
-            logStatus('Payload output downloaded successfully.');
+        function rgbToHex(r, g, b) {
+            return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
         }
+
+        // --- Download ---
+        function downloadImage() {
+            // Deselect any active objects so selection borders don't appear in download
+            canvas.discardActiveObject();
+            canvas.renderAll();
+            
+            const dataURL = canvas.toDataURL({ format: 'png', quality: 1 });
+            const link = document.createElement('a');
+            link.download = 'DAITYA_Pro_Output.png';
+            link.href = dataURL;
+            link.click();
+            logStatus('Image exported successfully.');
+        }
+
+        // Fix cursor for better UI UX
+        canvas.on('mouse:move', function(e) {
+            if (e.target && e.target.isOcrBox) {
+                canvas.defaultCursor = 'pointer';
+            } else {
+                canvas.defaultCursor = 'default';
+            }
+        });
     </script>
 </body>
 </html>
