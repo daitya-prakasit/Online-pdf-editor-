@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DAITYA - Precision Snip Editor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary: #3b82f6; --primary-hover: #2563eb; --bg: #0f172a; --panel: #1e293b; --border: #334155; --text: #f8fafc; }
         body { font-family: 'Hind', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
@@ -34,6 +34,9 @@
         #status { background: #1e293b; border: 1px solid var(--primary); color: var(--primary); padding: 10px; border-radius: 4px; font-size: 14px; font-weight: bold; margin-bottom: 15px; width: 100%; max-width: 900px; text-align: center; }
         
         .canvas-container-wrapper { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: #000; }
+        
+        /* Utility button style for Bold/Delete */
+        .icon-btn { padding: 10px 15px; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -55,7 +58,8 @@
         <div style="display: flex; gap: 5px; align-items: center; margin-left: 10px;">
             <input type="color" id="textColor" value="#ffffff" disabled title="Change Text Color">
             <input type="number" id="textSize" value="20" disabled title="Change Font Size">
-            <button id="btnDelete" onclick="deleteSelected()" disabled title="Delete Selected">🗑️</button>
+            <button class="icon-btn" id="btnBold" onclick="toggleBold()" disabled title="Toggle Bold"><b>B</b></button>
+            <button class="icon-btn" id="btnDelete" onclick="deleteSelected()" disabled title="Delete Selected">🗑️</button>
         </div>
 
         <button class="btn-green" id="btnDownload" onclick="downloadImage()" disabled style="margin-left: auto;">⬇ Download HD</button>
@@ -119,7 +123,7 @@
                 btn.classList.add('active');
                 btn.innerText = 'Draw over text now...';
                 canvas.defaultCursor = 'crosshair';
-                canvas.selection = false; // Disable normal object selection while drawing
+                canvas.selection = false; 
                 canvas.discardActiveObject();
                 canvas.renderAll();
                 logStatus('MODE ACTIVE: Click and drag a box exactly over the old text.');
@@ -142,7 +146,7 @@
 
             selectionRect = new fabric.Rect({
                 left: startX, top: startY, width: 0, height: 0,
-                fill: 'rgba(239, 68, 68, 0.2)', // Red transparent
+                fill: 'rgba(239, 68, 68, 0.2)',
                 stroke: '#ef4444', strokeWidth: 1, strokeDashArray: [3, 3],
                 selectable: false, evented: false
             });
@@ -168,10 +172,9 @@
             if (selectionRect.width > 5 && selectionRect.height > 5) {
                 processDrawnBox(selectionRect);
             } else {
-                canvas.remove(selectionRect); // Ignore tiny accidental clicks
+                canvas.remove(selectionRect); 
             }
             
-            // Turn off drawing mode automatically after one snip
             toggleDrawMode(); 
         });
 
@@ -182,13 +185,10 @@
             let w = Math.round(rectObj.width);
             let h = Math.round(rectObj.height);
 
-            // 1. Extract exact colors from the drawn area
             let { bgColorHex, textColorHex } = extractStrictColors(x, y, w, h);
 
-            // 2. Remove the red dashed selection box
             canvas.remove(rectObj);
 
-            // 3. Create Solid Background Mask
             let maskRect = new fabric.Rect({
                 left: x, top: y, width: w, height: h,
                 fill: bgColorHex, selectable: false, evented: false
@@ -196,13 +196,12 @@
             canvas.add(maskRect);
             maskRect.sendToBack();
 
-            // 4. Spawn Editable Text
             let editableText = new fabric.IText('Edit Me', {
                 left: x + 2, top: y + 2, 
                 fontSize: h * 0.8, 
                 fontFamily: 'Hind', 
                 fill: textColorHex, 
-                fontWeight: 600, 
+                fontWeight: 'bold', // Default set to bold
                 editable: true
             });
 
@@ -215,8 +214,7 @@
 
         // Color Extraction Engine
         function extractStrictColors(x, y, w, h) {
-            // Get background color from the very edge of the drawn box
-            let p = 2; // pixel border depth
+            let p = 2; 
             const bgAreas = [
                 { rx: x, ry: y, rw: p, rh: h }, { rx: x + w - p, ry: y, rw: p, rh: h },
                 { rx: x, ry: y, rw: w, rh: p }, { rx: x, ry: y + h - p, rw: w, rh: p }
@@ -231,7 +229,6 @@
             });
             let bgR = Math.round(r/count)||255; let bgG = Math.round(g/count)||255; let bgB = Math.round(b/count)||255;
 
-            // Get text color by finding highest contrast inside the box
             let textData = tempCanvasContext.getImageData(x, y, w, h).data;
             let maxContrast = [0,0,0]; let maxDist = -1;
             for (let i = 0; i < textData.length; i += 8) { 
@@ -251,6 +248,7 @@
         canvas.on('selection:cleared', () => {
             document.getElementById('textColor').disabled = true;
             document.getElementById('textSize').disabled = true;
+            document.getElementById('btnBold').disabled = true; // Disable bold button
             document.getElementById('btnDelete').disabled = true;
         });
 
@@ -259,9 +257,31 @@
             if (obj && obj.type === 'i-text') {
                 document.getElementById('textColor').disabled = false;
                 document.getElementById('textSize').disabled = false;
+                document.getElementById('btnBold').disabled = false; // Enable bold button
                 document.getElementById('btnDelete').disabled = false;
+                
                 document.getElementById('textColor').value = obj.fill || '#ffffff';
                 document.getElementById('textSize').value = obj.fontSize || 20;
+            }
+        }
+
+        // --- Asur's Custom Bold Toggle Logic ---
+        function toggleBold() {
+            try {
+                let activeObj = canvas.getActiveObject();
+                // Check if active object exists and is text
+                if (activeObj && activeObj.type === 'i-text') {
+                    // Check current weight and toggle
+                    let currentWeight = activeObj.fontWeight;
+                    let newWeight = (currentWeight === 'bold' || currentWeight === 600 || currentWeight === 700) ? 'normal' : 'bold';
+                    
+                    activeObj.set('fontWeight', newWeight);
+                    canvas.renderAll();
+                    logStatus(`Font weight updated to: ${newWeight.toUpperCase()}`);
+                }
+            } catch (error) {
+                console.error("Error toggling font weight:", error);
+                logStatus("ERROR: Failed to toggle bold state.");
             }
         }
 
